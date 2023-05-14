@@ -136,8 +136,11 @@ interface IController {
     /**
      * @notice Function called by pool contracts to deposit
      * controller fees
+     *
+     * @param _token Token to deposit
+     * @param _amount Amount to deposit
      */
-    function depositRevenue () payable external;
+    function depositRevenue (IERC20 _token, uint256 _amount) payable external;
 
     /**
      * @notice Requests distributing the vote token as reward

@@ -75,9 +75,6 @@ contract Controller is IController {
     // Reward balance of each user
     mapping(address => uint256) public rewardBalance;
 
-    // Whether a specific reward request has been processed
-    mapping(address => mapping(uint256 => bool)) public receivedReward;
-
     // Whether a pool is whitelisted
     mapping(address => bool) public poolWhitelisted;
 
@@ -127,11 +124,11 @@ contract Controller is IController {
     /**
      * @inheritdoc IController
      */
-    function depositRevenue() override external payable {
-        if (msg.value > 0) {
-            currentRevenue[msg.token] += msg.value;
-            _checkTokenSnapshot(msg.token);
-        }
+    function depositRevenue(IERC20 _token, uint256 _amount) override external payable {
+        currentRevenue[_token] += _amount;
+        _checkTokenSnapshot(_token);
+
+        _token.safeTransferFrom(msg.sender, address(this), _amount);
     }
 
     /**
@@ -310,12 +307,13 @@ contract Controller is IController {
 
     /**
      * @notice Deposits vote tokens
+     *
+     * @param _amount Amount to deposit
      */
-    function depositVoteToken() external payable {
-        require(msg.value > 0, "Cannot make a zero-value deposit.");
-        require(msg.token == voteToken, "Incorrect token.");
+    function depositVoteToken(uint256 _amount) external payable {
+        _depositVoteToken(msg.sender, _amount);
 
-        _depositVoteToken(msg.sender, msg.value);
+        voteToken.safeTransferFrom(msg.sender, address(this), _amount);
     }
 
     /**
@@ -338,7 +336,7 @@ contract Controller is IController {
 
         uint256 subTimestamp = _takeAccountSnapshot(msg.sender);
 
-        payable(msg.sender).transfer(voteToken, _amount);
+        voteToken.safeTransfer(msg.sender, _amount);
 
         emit WithdrawnVoteToken(msg.sender, _amount, voteTokenBalance[msg.sender], voteTokenTotalSupply, subTimestamp);
     }
@@ -533,7 +531,7 @@ contract Controller is IController {
 
         tokenSnapshots[_token][_tokenSnapshotIdx].claimed[msg.sender] = true;
         tokenSnapshots[_token][_tokenSnapshotIdx].claimedRevenue += transferAmount;
-        payable(msg.sender).transfer(_token, transferAmount);
+        _token.safeTransfer(msg.sender, transferAmount);
 
         emit TokenClaimed(_token, msg.sender, _tokenSnapshotIdx, _accountSnapshotIdx, transferAmount, tokenSnapshots[_token][_tokenSnapshotIdx].claimedRevenue);
     }
@@ -560,21 +558,20 @@ contract Controller is IController {
     /**
      * @notice Deposits the tokens that will be used as reward
      */
-    function depositRewardSupply() payable external {
-        require(msg.token == voteToken, "Incorrect token.");
+    function depositRewardSupply(uint256 _amount) payable external {
+        rewardSupply += _amount;
 
-        rewardSupply += msg.value;
+        voteToken.safeTransferFrom(msg.sender, address(this), _amount);
     }
 
     /**
      * @inheritdoc IController
      */
-    function requestTokenDistribution(address _account, uint128 _liquidity, uint32 _duration, uint96 _rewardCoefficient, uint256 _requestIdx) external override {
+    function requestTokenDistribution(address _account, uint128 _liquidity, uint32 _duration, uint96 _rewardCoefficient) external override {
         // This flag allows simulating a function call failure in the contract due to out-of-quota
         // TMP-MAYBE-DISABLE
         
         require(poolWhitelisted[msg.sender], "Pool is not whitelisted.");
-        require(!receivedReward[msg.sender][_requestIdx], "Reward already distributed.");
 
         uint256 amount = uint256(_liquidity) * uint256(_duration) * uint256(_rewardCoefficient) / REWARD_BASE;
 
@@ -585,8 +582,6 @@ contract Controller is IController {
         }
 
         rewardBalance[_account] += amount;
-
-        receivedReward[msg.sender][_requestIdx] = true;
 
         emit Reward(_account, _liquidity, _duration, _rewardCoefficient, amount);
     }
@@ -609,7 +604,7 @@ contract Controller is IController {
         if (_deposit) {
             _depositVoteToken(msg.sender, amount);
         } else {
-            payable(msg.sender).transfer(voteToken, amount);
+            voteToken.safeTransfer(msg.sender, amount);
         }
     }
 

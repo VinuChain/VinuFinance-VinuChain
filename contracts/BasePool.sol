@@ -82,9 +82,6 @@ contract BasePool is IBasePool, Pausable, IPausable {
     // Timestamp of the last reward of an address
     mapping(address => uint32) public lastRewardTimestamp;
 
-    mapping(uint256 => RewardRequest) public rewardRequests;
-    uint256 public numRewardRequests;
-
     // Last tracked liquidity of an address
     mapping(address => uint128) public lastTrackedLiquidity;
 
@@ -177,31 +174,33 @@ contract BasePool is IBasePool, Pausable, IPausable {
      */
     function addLiquidity(
         address _onBehalfOf,
+        uint128 _sendAmount,
         uint256 _deadline,
         uint256 _referralCode
     ) external override payable {
         // verify LP info and eligibility
         checkTimestamp(_deadline);
         checkSenderApproval(_onBehalfOf, IBasePool.ApprovalTypes.ADD_LIQUIDITY);
-        uint128 sendAmount = _acceptTransfer(loanCcyToken);
 
         (
             uint256 dust,
             uint256 newLpShares,
             uint32 earliestRemove
-        ) = _addLiquidity(_onBehalfOf, sendAmount);
+        ) = _addLiquidity(_onBehalfOf, _sendAmount);
 
 
-        _updateRewardAndSend(_onBehalfOf, lastTrackedLiquidity[_onBehalfOf] + sendAmount);
+        _updateRewardAndSend(_onBehalfOf, lastTrackedLiquidity[_onBehalfOf] + _sendAmount);
+
+        loanCcyToken.safeTransferFrom(msg.sender, address(this), _sendAmount);
 
         // transfer dust to creator if any
         if (dust > 0) {
-            poolController.depositRevenue{token: loanCcyToken, value: dust }();
+            _depositRevenue(loanCcyToken, dust);
         }
         // spawn event
         emit AddLiquidity(
             _onBehalfOf,
-            sendAmount,
+            _sendAmount,
             newLpShares,
             totalLiquidity,
             totalLpShares,
@@ -251,7 +250,7 @@ contract BasePool is IBasePool, Pausable, IPausable {
         _updateRewardAndSend(_onBehalfOf, lastTrackedLiquidity[_onBehalfOf] - liquidityRemoved);
 
         // transfer liquidity
-        payable(msg.sender).transfer(loanCcyToken, liquidityRemoved);
+        loanCcyToken.safeTransfer(msg.sender, liquidityRemoved);
         // spawn event
         emit RemoveLiquidity(
             _onBehalfOf,
@@ -331,10 +330,10 @@ contract BasePool is IBasePool, Pausable, IPausable {
         {
 
             // transfer creator fee to creator in collateral ccy
-            poolController.depositRevenue{ token: collCcyToken, value: _creatorFee }();
+            _depositRevenue(collCcyToken, _creatorFee);
 
             // transfer loanAmount in loan ccy
-            payable(msg.sender).transfer(loanCcyToken, loanAmount);
+            loanCcyToken.safeTransfer(msg.sender, loanAmount);
         }
         // spawn event
         emit Borrow(
@@ -380,21 +379,13 @@ contract BasePool is IBasePool, Pausable, IPausable {
             revert("Cannot repay in the same block.");
         // update loan info
         loanInfo.repaid = true;
-        uint128 _repayment = loanInfo.repayment;
 
-        // transfer repayment amount
-        uint128 repaymentAmountAfterFees = checkAndGetSendAmountAfterFees(
-            sendAmount,
-            _repayment
-        );
-        require(repaymentAmountAfterFees == _repayment, "Repayment too high.");
-        uint128 _collateral = loanInfo.collateral;
-
+        loanCcyToken.safeTransferFrom(msg.sender, address(this), loanInfo.repayment);
         // transfer collateral to _recipient (allows for possible
         // transfer directly to someone other than payer/sender)
-        payable(_recipient).transfer(collCcyToken, _collateral);
+        collCcyToken.safeTransfer(_recipient, loanInfo.collateral);
         // spawn event
-        emit Repay(_loanOwner, _loanIdx, repaymentAmountAfterFees);
+        emit Repay(_loanOwner, _loanIdx, loanInfo.repayment);
     }
 
     /**
@@ -804,7 +795,7 @@ contract BasePool is IBasePool, Pausable, IPausable {
                     uint32 earliestRemove
                 ) = _addLiquidity(_onBehalfOf, _repayments);
                 if (dust > 0) {
-                    poolController.depositRevenue{token: loanCcyToken, value: dust}();
+                    _depositRevenue(loanCcyToken, dust);
                 }
                 // spawn event
                 emit Reinvest(
@@ -815,12 +806,12 @@ contract BasePool is IBasePool, Pausable, IPausable {
                     loanIdx
                 );
             } else {
-                payable(msg.sender).transfer(loanCcyToken, _repayments);
+                loanCcyToken.safeTransfer(msg.sender, _repayments);
             }
         }
         // transfer collateral
         if (_collateral > 0) {
-            payable(msg.sender).transfer(collCcyToken, _collateral);
+            collCcyToken.safeTransfer(msg.sender, _collateral);
         }
     }
 
@@ -1166,40 +1157,6 @@ contract BasePool is IBasePool, Pausable, IPausable {
     }
 
     /**
-     * @notice Checks and returns loan ccy send amount after fees
-     * 
-     * @param _sendAmount Amount of loanCcy to be transferred
-     * @param lowerBnd Minimum amount which is expected to be received at least
-     *
-     * @return sendAmountAfterFees Amount of loanCcy after fees
-     */
-    function checkAndGetSendAmountAfterFees(
-        uint128 _sendAmount,
-        uint128 lowerBnd
-    ) internal pure returns (uint128 sendAmountAfterFees) {
-        // check range in case of rounding exact lowerBnd amount
-        // cannot be hit; set upper bound to prevent fat finger
-        if (
-            _sendAmount < lowerBnd ||
-            _sendAmount > (101 * lowerBnd) / 100
-        ) revert("Invalid send amount.");
-        return _sendAmount;
-    }
-
-    /**
-     * @notice Internal function to accept a token transfer and check overflows
-     *
-     * @param _token Token to be accepted
-     *
-     * @return value Amount of tokens transferred
-     */
-    function _acceptTransfer(IERC20 _token) internal returns (uint128 value) {
-        require(msg.token == _token, "Incorrect token.");
-        value = uint128(msg.value);
-        require(value == msg.value, "msg.value overflow.");
-    }
-
-    /**
      * @notice Internal function to update the last reward timestamp
      * and last tracked liquidity
      *
@@ -1241,26 +1198,8 @@ contract BasePool is IBasePool, Pausable, IPausable {
      */
     function _sendReward(address _account, uint128 _liquidity, uint32 _timeSinceLastReward) internal {
         if (_liquidity > 0 && _timeSinceLastReward > 0) {
-            rewardRequests[numRewardRequests].account = _account;
-            rewardRequests[numRewardRequests].liquidity = _liquidity;
-            rewardRequests[numRewardRequests].timeSinceLastReward = _timeSinceLastReward;
-            numRewardRequests++;
-            poolController.requestTokenDistribution(_account, _liquidity, _timeSinceLastReward, rewardCoefficient, numRewardRequests - 1);
+            poolController.requestTokenDistribution(_account, _liquidity, _timeSinceLastReward, rewardCoefficient);
         }
-    }
-
-    /**
-     * @notice Re-sends a reward request
-     *
-     * @dev This helps to deal with situations where the message fails to be sent
-     * due to how Vite's quota management works
-     *
-     * @param _rewardRequestIdx Index of the reward request to be re-sent
-     */
-    function resendRewardRequest(uint256 _rewardRequestIdx) external {
-        require(_rewardRequestIdx < numRewardRequests, "Invalid reward request index.");
-        checkSenderApproval(rewardRequests[_rewardRequestIdx].account, IBasePool.ApprovalTypes.RESEND_REWARD_REQUEST);
-        poolController.requestTokenDistribution(rewardRequests[_rewardRequestIdx].account, rewardRequests[_rewardRequestIdx].liquidity, rewardRequests[_rewardRequestIdx].timeSinceLastReward, rewardCoefficient, _rewardRequestIdx);
     }
 
     /**
@@ -1282,6 +1221,11 @@ contract BasePool is IBasePool, Pausable, IPausable {
     function forceRewardUpdate(address _onBehalfOf) external {
         checkSenderApproval(_onBehalfOf, IBasePool.ApprovalTypes.FORCE_REWARD_UPDATE);
         _updateRewardAndSend(_onBehalfOf, lastTrackedLiquidity[_onBehalfOf]);
+    }
+
+    function _depositRevenue(IERC20 _token, uint256 _amount) internal {
+        _token.safeIncreaseAllowance(poolController, _amount);
+        poolController.depositRevenue(_token, _amount);
     }
 
     /**
