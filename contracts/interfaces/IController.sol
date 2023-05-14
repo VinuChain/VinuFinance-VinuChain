@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma soliditypp ^0.8.0;
+pragma solidity ^0.8.0;
 
-import "./IPausable.solpp";
+import "node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./IPausable.sol";
 
 interface IController {
     enum Action{
@@ -56,7 +57,7 @@ interface IController {
     );
 
     event TokenSnapshotPerformed(
-        vitetoken indexed tokenId,
+        IERC20 indexed tokenId,
         uint256 tokenSnapshotIdx,
         uint256 voteTokenTotalSupply,
         uint256 collectedRevenue,
@@ -64,7 +65,7 @@ interface IController {
     );
 
     event TokenClaimed(
-        vitetoken indexed tokenId,
+        IERC20 indexed tokenId,
         address indexed account,
         uint256 indexed tokenSnapshotIdx,
         uint256 accountSnapshotIdx,

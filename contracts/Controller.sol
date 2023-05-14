@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma soliditypp ^0.8.0;
+pragma solidity ^0.8.0;
 
-import "./interfaces/IController.solpp";
+import "node_modules/@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./interfaces/IController.sol";
 
 contract Controller is IController {
+    using SafeERC20 for IERC20;
+
     // Threshold base value for voting
     uint256 constant THRESHOLD_BASE = 10000;
 
@@ -15,7 +19,7 @@ contract Controller is IController {
     uint256 constant REWARD_BASE = 10 ** 18;
 
     // Token to be used for voting
-    vitetoken public voteToken;
+    IERC20 public voteToken;
 
     // Thresholds (denominated in THRESHOLD_BASE)
     uint256 public pauseThreshold;
@@ -48,13 +52,13 @@ contract Controller is IController {
     mapping(uint256 => Proposal) proposals;
 
     // Token snapshots of each token
-    mapping(vitetoken => mapping(uint256 => TokenSnapshot)) tokenSnapshots;
+    mapping(IERC20 => mapping(uint256 => TokenSnapshot)) tokenSnapshots;
     
     // Number of token snapshots for a given token
-    mapping(vitetoken => uint256) public numTokenSnapshots;
+    mapping(IERC20 => uint256) public numTokenSnapshots;
 
     // Current revenue of each token
-    mapping(vitetoken => uint256) public currentRevenue;
+    mapping(IERC20 => uint256) public currentRevenue;
 
     // Account snapshots
     mapping(address => mapping(uint256 => AccountSnapshot)) accountSnapshots;
@@ -93,7 +97,7 @@ contract Controller is IController {
      * @param _vetoHolder Address of the veto holder
      */
     constructor (
-        vitetoken _voteToken,
+        IERC20 _voteToken,
         uint256 _pauseThreshold,
         uint256 _unpauseThreshold,
         uint256 _whitelistThreshold,
@@ -347,7 +351,7 @@ contract Controller is IController {
      *
      * @param _token Token to take a snapshot of
      */
-    function forceTokenSnapshotCheck(vitetoken _token) external {
+    function forceTokenSnapshotCheck(IERC20 _token) external {
         _checkTokenSnapshot(_token);
     }
 
@@ -357,7 +361,7 @@ contract Controller is IController {
      *
      * @param _token Token to check
      */
-    function _checkTokenSnapshot (vitetoken _token) internal {
+    function _checkTokenSnapshot (IERC20 _token) internal {
         uint256 newSnapshotIdx = numTokenSnapshots[_token];
         if (newSnapshotIdx == 0 || // First snapshot
             // Enough time has passed
@@ -438,7 +442,7 @@ contract Controller is IController {
      * @return _timestamp Timestamp of the snapshot
      * @return _subTimestamp Sub-timestamp of the snapshot
      */
-    function getTokenSnapshot(vitetoken _token, uint256 _tokenSnapshotIdx) external view
+    function getTokenSnapshot(IERC20 _token, uint256 _tokenSnapshotIdx) external view
         returns (uint256 _voteTokenTotalSupply, uint256 _collectedRevenue, uint256 _claimedRevenue, uint256 _timestamp, uint256 _subTimestamp)
     {
         require(_tokenSnapshotIdx < numTokenSnapshots[_token], "Invalid token snapshot idx.");
@@ -457,7 +461,7 @@ contract Controller is IController {
      * @param _tokenSnapshotIdx Index of the snapshot
      * @param _account Account to check
      */
-    function hasClaimedSnapshot(vitetoken _token, uint256 _tokenSnapshotIdx, address _account) external view returns (bool) {
+    function hasClaimedSnapshot(IERC20 _token, uint256 _tokenSnapshotIdx, address _account) external view returns (bool) {
         require(_tokenSnapshotIdx < numTokenSnapshots[_token], "Invalid token snapshot idx.");
 
         return tokenSnapshots[_token][_tokenSnapshotIdx].claimed[_account];
@@ -488,7 +492,7 @@ contract Controller is IController {
      * @param _tokenSnapshotIdx Index of the token snapshot
      * @param _accountSnapshotIdx Index of the account snapshot
      */
-    function claimToken(vitetoken _token, uint256 _tokenSnapshotIdx, uint256 _accountSnapshotIdx) public {
+    function claimToken(IERC20 _token, uint256 _tokenSnapshotIdx, uint256 _accountSnapshotIdx) public {
         require(_accountSnapshotIdx < numAccountSnapshots[msg.sender], "Invalid account snapshot idx.");
         require(_tokenSnapshotIdx < numTokenSnapshots[_token], "Invalid token snapshot idx.");
 
@@ -543,7 +547,7 @@ contract Controller is IController {
      * @param _tokenSnapshotIdxs Indexes of the token snapshots
      * @param _accountSnapshotIdxs Indexes of the account snapshots
      */
-    function claimMultiple(vitetoken[] memory _tokens, uint256[] memory _tokenSnapshotIdxs, uint256[] memory _accountSnapshotIdxs) external {
+    function claimMultiple(IERC20[] memory _tokens, uint256[] memory _tokenSnapshotIdxs, uint256[] memory _accountSnapshotIdxs) external {
         require(_tokens.length == _accountSnapshotIdxs.length, "_tokens and _accountSnapshotIdxs must have the same length.");
         require(_tokens.length == _tokenSnapshotIdxs.length, "_tokens and _tokenSnapshotIdxs must have the same length.");
         require(_tokens.length > 0, "Arrays must have at least one element.");

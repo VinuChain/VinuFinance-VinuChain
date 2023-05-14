@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma soliditypp ^0.8.0;
+pragma solidity ^0.8.0;
+
+import "node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IBasePool {
     event NewSubPool(
-        vitetoken loanCcyToken,
-        vitetoken collCcyToken,
+        IERC20 loanCcyToken,
+        IERC20 collCcyToken,
         uint256 loanTenor,
         uint256 maxLoanPerColl,
         uint256 r1,
@@ -276,8 +278,8 @@ interface IBasePool {
         external
         view
         returns (
-            vitetoken _loanCcyToken,
-            vitetoken _collCcyToken,
+            IERC20 _loanCcyToken,
+            IERC20 _collCcyToken,
             uint256 _maxLoanPerColl,
             uint256 _minLoan,
             uint256 _loanTenor,

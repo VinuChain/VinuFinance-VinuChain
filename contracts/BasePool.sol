@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma soliditypp ^0.8.0;
+pragma solidity ^0.8.0;
 
-import {IBasePool} from "./interfaces/IBasePool.solpp";
-import "./interfaces/IPausable.solpp";
-import "./interfaces/IController.solpp";
+import "node_modules/@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IBasePool} from "./interfaces/IBasePool.sol";
+import "./interfaces/IPausable.sol";
+import "./interfaces/IController.sol";
 import "../node_modules/@openzeppelin/contracts/security/Pausable.sol";
 
 contract BasePool is IBasePool, Pausable, IPausable {
+    using SafeERC20 for IERC20;
 
     // Minimum period between adding liqudity and removing it, in seconds
     uint256 constant MIN_LPING_PERIOD = 120;
@@ -19,8 +22,6 @@ contract BasePool is IBasePool, Pausable, IPausable {
     // Maximum creator fee, denominated in BASE
     uint256 constant MAX_FEE = 300 * 10 ** 14; // 300bps
 
-    vitetoken constant ZERO_TOKEN = "tti_000000000000000000004cfd";
-
     // Minimum liquidity, denominated in loanCcy decimals
     uint256 minLiquidity;
 
@@ -28,9 +29,9 @@ contract BasePool is IBasePool, Pausable, IPausable {
     IController public poolController;
 
     // Collateral token
-    vitetoken collCcyToken;
+    IERC20 collCcyToken;
     // Loan token
-    vitetoken loanCcyToken;
+    IERC20 loanCcyToken;
 
     // Total LP shares. Denominated and discretized in 1/1000th of minLiquidity
     uint128 totalLpShares;
@@ -66,7 +67,7 @@ contract BasePool is IBasePool, Pausable, IPausable {
     mapping(address => LpInfo) addrToLpInfo;
 
     // Used to prevent flash loans
-    mapping(address => uint256) lastAddOfMsgSender;
+    mapping(address => uint256) lastAddOfTxOrigin;
 
     // Loan infos
     mapping(uint256 => LoanInfo) public loanIdxToLoanInfo;
@@ -108,7 +109,7 @@ contract BasePool is IBasePool, Pausable, IPausable {
      * @param _rewardCoefficient Reward coefficient, denominated in BASE
     */
     constructor(
-        vitetoken[] memory _tokens,
+        IERC20[] memory _tokens,
         uint256 _collTokenDecimals,
         uint256 _loanTenor,
         uint256 _maxLoanPerColl,
@@ -125,7 +126,7 @@ contract BasePool is IBasePool, Pausable, IPausable {
         require(_liquidityBnds.length == 2, "Liquidity bounds length must be 2.");
 
         require(_tokens[0] != _tokens[1], "Loan and collateral must not be the same.");
-        if (_tokens[0] == ZERO_TOKEN || _tokens[1] == ZERO_TOKEN)
+        if (_tokens[0] == address(0) || _tokens[1] == address(0))
             revert("Loan and collateral tokens must not be 0.");
         require(_loanTenor >= MIN_TENOR, "Load tenor must be at least MIN_TENOR.");
         require(_maxLoanPerColl > 0, "Max loan must not be 0.");
@@ -221,7 +222,7 @@ contract BasePool is IBasePool, Pausable, IPausable {
         address _onBehalfOf,
         uint128 numShares
     ) external override {
-        delete lastAddOfMsgSender[_onBehalfOf];
+        delete lastAddOfTxOrigin[_onBehalfOf];
         // verify LP info and eligibility
         checkSenderApproval(
             _onBehalfOf,
@@ -289,7 +290,7 @@ contract BasePool is IBasePool, Pausable, IPausable {
         uint256 _timestamp = checkTimestamp(_deadline);
         // check if atomic add and borrow as well as sanity check of onBehalf address
         if (
-            lastAddOfMsgSender[msg.sender] == _timestamp ||
+            lastAddOfTxOrigin[tx.origin] == _timestamp ||
             _onBehalfOf == address(0)
         ) revert("Invalid operation.");
         uint128 sendAmount = _acceptTransfer(collCcyToken);
@@ -590,8 +591,8 @@ contract BasePool is IBasePool, Pausable, IPausable {
         view
         override
         returns (
-            vitetoken _loanCcyToken,
-            vitetoken _collCcyToken,
+            IERC20 _loanCcyToken,
+            IERC20 _collCcyToken,
             uint256 _maxLoanPerColl,
             uint256 _minLoan,
             uint256 _loanTenor,
@@ -879,7 +880,7 @@ contract BasePool is IBasePool, Pausable, IPausable {
         earliestRemove = uint32(block.timestamp + MIN_LPING_PERIOD);
         lpInfo.earliestRemove = earliestRemove;
         // keep track of add timestamp per tx origin to check for atomic add and borrows/rollOvers
-        lastAddOfMsgSender[msg.sender] = block.timestamp;
+        lastAddOfTxOrigin[tx.origin] = block.timestamp;
     }
 
     /**
@@ -1192,7 +1193,7 @@ contract BasePool is IBasePool, Pausable, IPausable {
      *
      * @return value Amount of tokens transferred
      */
-    function _acceptTransfer(vitetoken _token) internal returns (uint128 value) {
+    function _acceptTransfer(IERC20 _token) internal returns (uint128 value) {
         require(msg.token == _token, "Incorrect token.");
         value = uint128(msg.value);
         require(value == msg.value, "msg.value overflow.");
@@ -1265,7 +1266,7 @@ contract BasePool is IBasePool, Pausable, IPausable {
     /**
      * @notice Helper function to update the reward and send it to the pool controller
      *
-     * @param _account Acount for which the reward is being sent
+     * @param _account Account for which the reward is being sent
      * @param _newLiquidity New liquidity of the account
      */
     function _updateRewardAndSend(address _account, uint256 _newLiquidity) internal {
