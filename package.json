@@ -1,0 +1,52 @@
+{
+  "name": "orderbook-style-prototyping",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "clean": "hardhat clean && rm -rf abi/ && rm -rf artifacts/ && rm -rf dist/ && rm -rf typechain/",
+    "compile": "hardhat compile",
+    "prettier": "prettier --config .prettierrc --check \"{contracts,test}/**/*.{js,json,sol,ts}\"",
+    "prettier:write": "prettier --config .prettierrc --write \"{contracts,test}/**/*.{js,json,sol,ts}\"",
+    "test": "hardhat test",
+    "lint": "solhint \"contracts/**/*.sol\"",
+    "slither": "slither . --checklist",
+    "prepare": "husky install"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mysofinance/orderbook-style-prototyping.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mysofinance/orderbook-style-prototyping/issues"
+  },
+  "homepage": "https://github.com/mysofinance/orderbook-style-prototyping#readme",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^1.0.3",
+    "hardhat": "^2.9.9",
+    "husky": "^8.0.3",
+    "prettier": "^2.7.1",
+    "prettier-plugin-solidity": "^1.0.0-beta.19",
+    "solidity-coverage": "^0.7.21"
+  },
+  "dependencies": {
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.8",
+    "@nomiclabs/hardhat-etherscan": "^3.1.4",
+    "@openzeppelin/contracts": "^4.7.0",
+    "@primitivefi/hardhat-dodoc": "^0.2.3",
+    "abort-controller": "^3.0.0",
+    "chai": "^4.3.6",
+    "color-convert": "^2.0.1",
+    "dotenv": "^16.0.1",
+    "eth-provider": "^0.13.6",
+    "fmin": "^0.0.2",
+    "fs-extra": "^11.1.1",
+    "hardhat-abi-exporter": "^2.10.0",
+    "hardhat-contract-sizer": "^2.5.1",
+    "hardhat-gas-reporter": "^1.0.8",
+    "io-ts": "^2.2.20"
+  }
+}
