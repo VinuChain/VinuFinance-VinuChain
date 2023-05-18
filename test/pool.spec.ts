@@ -20,7 +20,7 @@ const expect = chai.expect
 let provider: any;
 let deployer: any;
 
-let controllerContractBlueprint : ethers.ContractFactory;
+let controllerContractBlueprint : hre.ethers.ContractFactory;
 let contractBlueprint: ethers.ContractFactory;
 
 let controllerContract : any;
@@ -31,8 +31,12 @@ const ZERO_ADDRESS = 'vite_0000000000000000000000000000000000000000a4f3a0cb58'
 
 
 const MONE = BigNumber.from('1000000000000000000') //10**18
-const LOAN_CCY_TOKEN = '0xeda5e181146b1f9a7f40f85c0da334938420d514' //'tti_5649544520544f4b454e6e40' // VITE
-const COLL_CCY_TOKEN = '0xeda5e181146b1f9a7f40f85c0da334938420d514' //'tti_564954455820434f494e69b5' // VX
+let LOAN_CCY_TOKEN : string //'tti_5649544520544f4b454e6e40' // VITE
+let COLL_CCY_TOKEN : string //'tti_564954455820434f494e69b5' // VX
+
+let loanCcyTokenContract : any
+let collCcyTokenContract : any
+
 const LOAN_TENOR = 86400
 const MAX_LOAN_PER_COLL = '1'//ONE_VITE.toString()
 const R1 = MONE.mul(2).div(10).toString()
@@ -46,7 +50,9 @@ const MIN_LPING_PERIOD = 120
 
 const CREATOR_FEE = 8
 
-let VOTE_TOKEN = '0xeda5e181146b1f9a7f40f85c0da334938420d514' //'tti_564954455820434f494e69b5'
+let voteTokenContract : any
+
+let VOTE_TOKEN : string //'tti_564954455820434f494e69b5'
 const SNAPSHOT_TOKEN_EVERY = 100 
 const PAUSE_THRESHOLD = 2000 // 20%
 const UNPAUSE_THRESHOLD = 3000 // 30%
@@ -66,105 +72,8 @@ const Actions = {
     Dewhitelist : 3
 }
 
-describe('test BasePool', function () {
-    before(async function() {
-        //provider = await vite.newProvider('http://127.0.0.1:23456')
-        //deployer = vite.newAccount(config.networks.local.mnemonic, 0, provider)
+const getPastEvents = (...args : any) => { }
 
-        console.log('Creating signer...')
-        const [a] = await ethers.getSigners();
-        console.log('A:', a)
-        deployer = a
-
-        //await transpileContract('contracts/BasePool.solpp')
-        //await transpileContract('contracts/Controller.solpp')
-    })
-
-    describe('contract deployment', function () {
-        beforeEach(async function() {
-            // compile
-            /*const compiledContracts = await compile('contracts/Controller_parsed.solpp')
-            expect(compiledContracts).to.have.property('Controller')
-            controllerContract = compiledContracts.Controller
-            // deploy
-            controllerContract.setDeployer(deployer).setProvider(provider)
-            console.log(controllerContract.provider._provider.ERRORS)*/
-
-            controllerContractBlueprint = await hre.ethers.getContractFactory('Controller')
-
-            contractBlueprint = await hre.ethers.getContractFactory('BasePool')
-
-
-            // compile
-            /*const compiledContracts2 = await compile('contracts/BasePool_parsed.solpp')
-            expect(compiledContracts2).to.have.property('BasePool')
-            contract = compiledContracts2.BasePool
-            console.log('Contract size:', Math.ceil(contract.byteCode.length / 2), 'bytes')
-
-            // deploy
-            contract.setDeployer(deployer).setProvider(provider)
-            console.log(contract.provider._provider.ERRORS)*/
-        })
-        it('deploys the contract', async function() {
-            //console.log(controllerContractBlueprint.interface)
-            console.log('Deployer address:', deployer.address)
-            controllerContract = await controllerContractBlueprint.deploy(
-                VOTE_TOKEN,
-                PAUSE_THRESHOLD,
-                UNPAUSE_THRESHOLD,
-                WHITELIST_THRESHOLD,
-                DEWHITELIST_THRESHOLD,
-                String(SNAPSHOT_TOKEN_EVERY),
-                String(CONTROLLER_LOCK_PERIOD),
-                deployer.address)
-        })
-        /*it('deploys the contract', async function() {
-            // @ts-ignore
-            await controllerContract.deploy({ params : [VOTE_TOKEN, PAUSE_THRESHOLD, UNPAUSE_THRESHOLD, WHITELIST_THRESHOLD, DEWHITELIST_THRESHOLD, String(SNAPSHOT_TOKEN_EVERY), String(CONTROLLER_LOCK_PERIOD), deployer.address ]
-            , responseLatency: 1})
-            expect(controllerContract.address).to.be.a('string')
-            expect(await controllerContract.query('voteToken', [])).to.be.deep.equal([VOTE_TOKEN])
-            expect(await controllerContract.query('pauseThreshold', [])).to.be.deep.equal([String(PAUSE_THRESHOLD)])
-            expect(await controllerContract.query('unpauseThreshold', [])).to.be.deep.equal([String(UNPAUSE_THRESHOLD)])
-            expect(await controllerContract.query('whitelistThreshold', [])).to.be.deep.equal([String(WHITELIST_THRESHOLD)])
-            expect(await controllerContract.query('dewhitelistThreshold', [])).to.be.deep.equal([String(DEWHITELIST_THRESHOLD)])
-            expect(await controllerContract.query('snapshotTokenEvery', [])).to.be.deep.equal([String(SNAPSHOT_TOKEN_EVERY)])
-            expect(await controllerContract.query('lockPeriod', [])).to.be.deep.equal([String(CONTROLLER_LOCK_PERIOD)])
-            expect(await controllerContract.query('vetoHolder', [])).to.be.deep.equal([String(deployer.address)])
-
-            // @ts-ignore
-            await contract.deploy({ params: [ [LOAN_CCY_TOKEN, COLL_CCY_TOKEN], DECIMALS, LOAN_TENOR, // @ts-ignore
-                MAX_LOAN_PER_COLL, [R1, R2], [LIQUIDITY_BND_1, LIQUIDITY_BND_2], MIN_LOAN, // @ts-ignore
-                CREATOR_FEE, MIN_LIQUIDITY, controllerContract.address, REWARD_COEFFICIENT
-            ], responseLatency: 1})
-
-            expect(contract.address).to.be.a('string')
-
-            await checkQuery('getPoolInfo', [],
-                [
-                    LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
-                    0, 0, REWARD_COEFFICIENT, 1
-                ]
-            )
-
-            await checkEvents([{
-                loanCcyToken : LOAN_CCY_TOKEN,
-                collCcyToken : COLL_CCY_TOKEN,
-                loanTenor : LOAN_TENOR,
-                maxLoanPerColl : MAX_LOAN_PER_COLL,
-                r1 : R1,
-                r2 : R2,
-                liquidityBnd1 : LIQUIDITY_BND_1,
-                liquidityBnd2 : LIQUIDITY_BND_2,
-                minLoan : MIN_LOAN,
-                creatorFee : CREATOR_FEE
-            }])
-            await setTime(0)
-        })*/
-    })
-})
-
-/*
 const approvalBits = (permissions : Array<string>) => {
     let bits = 0
     const possiblePermissions = ['repay', 'addLiquidity', 'removeLiquidity', 'claim', 'forceRewardUpdate', 'resendRewardRequest']
@@ -184,6 +93,8 @@ const approvalBits = (permissions : Array<string>) => {
 }
 
 const checkEvents = async (correct : Array<Object>, referenceContract : any | undefined = undefined) => {
+
+    return;
     if (!referenceContract) {
         referenceContract = contract
     }
@@ -218,7 +129,7 @@ const checkQuery = async (methodName : string, params : Array<any>, expected : A
         return String(x)
     }
     const parsedExpected = serialize(expected) //expected.map(x => String(x))
-    expect(await referenceContract.query(methodName, params)).to.be.deep.equal(parsedExpected)
+    expect(await referenceContract[methodName](params)).to.be.deep.equal(parsedExpected)
 }
 
 function wait(milliseconds : number){
@@ -326,56 +237,75 @@ const transpileContract = async (path) => {
     await fs.writeFile(newPath, contractSrc, { encoding : 'utf-8' })
 }
 
-
 describe('test BasePool', function () {
     before(async function() {
-        provider = await vite.newProvider('http://127.0.0.1:23456')
-        deployer = vite.newAccount(config.networks.local.mnemonic, 0, provider)
+        //provider = await vite.newProvider('http://127.0.0.1:23456')
+        //deployer = vite.newAccount(config.networks.local.mnemonic, 0, provider)
 
-       await transpileContract('contracts/BasePool.solpp')
-       await transpileContract('contracts/Controller.solpp')
+        console.log('Creating signer...')
+        const [a] = await ethers.getSigners();
+        console.log('A:', a)
+        deployer = a
+
+        const erc20Blueprint = await hre.ethers.getContractFactory('MockERC20')
+
+        loanCcyTokenContract = await erc20Blueprint.deploy()
+        LOAN_CCY_TOKEN = loanCcyTokenContract.address
+
+
+        collCcyTokenContract = await erc20Blueprint.deploy()
+        COLL_CCY_TOKEN = collCcyTokenContract.address
+
+        voteTokenContract = await erc20Blueprint.deploy()
+        VOTE_TOKEN = voteTokenContract.address
+
+        //await transpileContract('contracts/BasePool.solpp')
+        //await transpileContract('contracts/Controller.solpp')
+
+        
+
+        controllerContractBlueprint = await hre.ethers.getContractFactory('Controller')
+
+        contractBlueprint = await hre.ethers.getContractFactory('BasePool')
     })
 
     describe('contract deployment', function () {
-        beforeEach(async function() {
-            // compile
-            const compiledContracts = await compile('contracts/Controller_parsed.solpp')
-            expect(compiledContracts).to.have.property('Controller')
-            controllerContract = compiledContracts.Controller
-            // deploy
-            controllerContract.setDeployer(deployer).setProvider(provider)
-            console.log(controllerContract.provider._provider.ERRORS)
-
-
-            // compile
-            const compiledContracts2 = await compile('contracts/BasePool_parsed.solpp')
-            expect(compiledContracts2).to.have.property('BasePool')
-            contract = compiledContracts2.BasePool
-            console.log('Contract size:', Math.ceil(contract.byteCode.length / 2), 'bytes')
-
-            // deploy
-            contract.setDeployer(deployer).setProvider(provider)
-            console.log(contract.provider._provider.ERRORS)
-        })
         it('deploys the contract', async function() {
-            // @ts-ignore
-            await controllerContract.deploy({ params : [VOTE_TOKEN, PAUSE_THRESHOLD, UNPAUSE_THRESHOLD, WHITELIST_THRESHOLD, DEWHITELIST_THRESHOLD, String(SNAPSHOT_TOKEN_EVERY), String(CONTROLLER_LOCK_PERIOD), deployer.address ]
-            , responseLatency: 1})
-            expect(controllerContract.address).to.be.a('string')
-            expect(await controllerContract.query('voteToken', [])).to.be.deep.equal([VOTE_TOKEN])
-            expect(await controllerContract.query('pauseThreshold', [])).to.be.deep.equal([String(PAUSE_THRESHOLD)])
-            expect(await controllerContract.query('unpauseThreshold', [])).to.be.deep.equal([String(UNPAUSE_THRESHOLD)])
-            expect(await controllerContract.query('whitelistThreshold', [])).to.be.deep.equal([String(WHITELIST_THRESHOLD)])
-            expect(await controllerContract.query('dewhitelistThreshold', [])).to.be.deep.equal([String(DEWHITELIST_THRESHOLD)])
-            expect(await controllerContract.query('snapshotTokenEvery', [])).to.be.deep.equal([String(SNAPSHOT_TOKEN_EVERY)])
-            expect(await controllerContract.query('lockPeriod', [])).to.be.deep.equal([String(CONTROLLER_LOCK_PERIOD)])
-            expect(await controllerContract.query('vetoHolder', [])).to.be.deep.equal([String(deployer.address)])
 
-            // @ts-ignore
-            await contract.deploy({ params: [ [LOAN_CCY_TOKEN, COLL_CCY_TOKEN], DECIMALS, LOAN_TENOR, // @ts-ignore
-                MAX_LOAN_PER_COLL, [R1, R2], [LIQUIDITY_BND_1, LIQUIDITY_BND_2], MIN_LOAN, // @ts-ignore
-                CREATOR_FEE, MIN_LIQUIDITY, controllerContract.address, REWARD_COEFFICIENT
-            ], responseLatency: 1})
+            controllerContract = await controllerContractBlueprint.deploy(
+                VOTE_TOKEN,
+                PAUSE_THRESHOLD,
+                UNPAUSE_THRESHOLD,
+                WHITELIST_THRESHOLD,
+                DEWHITELIST_THRESHOLD,
+                String(SNAPSHOT_TOKEN_EVERY),
+                String(CONTROLLER_LOCK_PERIOD),
+                deployer.address
+            )
+
+            expect(controllerContract.address).to.be.a('string')
+            expect(await controllerContract.voteToken()).to.be.deep.equal(VOTE_TOKEN)
+            expect(await controllerContract.pauseThreshold()).to.be.deep.equal(String(PAUSE_THRESHOLD))
+            expect(await controllerContract.unpauseThreshold()).to.be.deep.equal(String(UNPAUSE_THRESHOLD))
+            expect(await controllerContract.whitelistThreshold()).to.be.deep.equal(String(WHITELIST_THRESHOLD))
+            expect(await controllerContract.dewhitelistThreshold()).to.be.deep.equal(String(DEWHITELIST_THRESHOLD))
+            expect(await controllerContract.snapshotTokenEvery()).to.be.deep.equal(String(SNAPSHOT_TOKEN_EVERY))
+            expect(await controllerContract.lockPeriod()).to.be.deep.equal(String(CONTROLLER_LOCK_PERIOD))
+            expect(await controllerContract.vetoHolder()).to.be.deep.equal(String(deployer.address))
+
+            contract = await contractBlueprint.deploy(
+                [LOAN_CCY_TOKEN, COLL_CCY_TOKEN],
+                DECIMALS,
+                LOAN_TENOR,
+                MAX_LOAN_PER_COLL,
+                [R1, R2],
+                [LIQUIDITY_BND_1, LIQUIDITY_BND_2],
+                MIN_LOAN,
+                CREATOR_FEE,
+                MIN_LIQUIDITY,
+                controllerContract.address, 
+                REWARD_COEFFICIENT
+            )
 
             expect(contract.address).to.be.a('string')
 
@@ -386,7 +316,7 @@ describe('test BasePool', function () {
                 ]
             )
 
-            await checkEvents([{
+            /*await checkEvents([{
                 loanCcyToken : LOAN_CCY_TOKEN,
                 collCcyToken : COLL_CCY_TOKEN,
                 loanTenor : LOAN_TENOR,
@@ -397,53 +327,58 @@ describe('test BasePool', function () {
                 liquidityBnd2 : LIQUIDITY_BND_2,
                 minLoan : MIN_LOAN,
                 creatorFee : CREATOR_FEE
-            }])
-            await setTime(0)
+            }])*/
         })
     })
 
     describe('contract execution', function () {
         beforeEach(async function () {
-            // compile
-            const compiledContracts = await compile('contracts/Controller_parsed.solpp')
-            expect(compiledContracts).to.have.property('Controller')
-            controllerContract = compiledContracts.Controller
-            // deploy
-            controllerContract.setDeployer(deployer).setProvider(provider)
-            // console.log(contract)
-            console.log(controllerContract.provider._provider.ERRORS)
+            controllerContract = await controllerContractBlueprint.deploy(
+                VOTE_TOKEN,
+                PAUSE_THRESHOLD,
+                UNPAUSE_THRESHOLD,
+                WHITELIST_THRESHOLD,
+                DEWHITELIST_THRESHOLD,
+                String(SNAPSHOT_TOKEN_EVERY),
+                String(CONTROLLER_LOCK_PERIOD),
+                deployer.address
+            )
 
-
-            // compile
-            const compiledContracts2 = await compile('contracts/BasePool_parsed.solpp')
-            expect(compiledContracts2).to.have.property('BasePool')
-            contract = compiledContracts2.BasePool
-            // deploy
-            contract.setDeployer(deployer).setProvider(provider)
-            // console.log(contract)
-            console.log(contract.provider._provider.ERRORS)
-
-
-            // @ts-ignore
-            await controllerContract.deploy({ params : [VOTE_TOKEN, PAUSE_THRESHOLD, UNPAUSE_THRESHOLD, WHITELIST_THRESHOLD, DEWHITELIST_THRESHOLD, String(SNAPSHOT_TOKEN_EVERY), String(CONTROLLER_LOCK_PERIOD), deployer.address ]
-                , responseLatency: 1})
             expect(controllerContract.address).to.be.a('string')
-            expect(await controllerContract.query('voteToken', [])).to.be.deep.equal([VOTE_TOKEN])
-            expect(await controllerContract.query('pauseThreshold', [])).to.be.deep.equal([String(PAUSE_THRESHOLD)])
-            expect(await controllerContract.query('unpauseThreshold', [])).to.be.deep.equal([String(UNPAUSE_THRESHOLD)])
-            expect(await controllerContract.query('whitelistThreshold', [])).to.be.deep.equal([String(WHITELIST_THRESHOLD)])
-            expect(await controllerContract.query('dewhitelistThreshold', [])).to.be.deep.equal([String(DEWHITELIST_THRESHOLD)])
-            expect(await controllerContract.query('vetoHolder', [])).to.be.deep.equal([String(deployer.address)])
+            expect(await controllerContract.voteToken()).to.be.deep.equal(VOTE_TOKEN)
+            expect(await controllerContract.pauseThreshold()).to.be.deep.equal(String(PAUSE_THRESHOLD))
+            expect(await controllerContract.unpauseThreshold()).to.be.deep.equal(String(UNPAUSE_THRESHOLD))
+            expect(await controllerContract.whitelistThreshold()).to.be.deep.equal(String(WHITELIST_THRESHOLD))
+            expect(await controllerContract.dewhitelistThreshold()).to.be.deep.equal(String(DEWHITELIST_THRESHOLD))
+            expect(await controllerContract.snapshotTokenEvery()).to.be.deep.equal(String(SNAPSHOT_TOKEN_EVERY))
+            expect(await controllerContract.lockPeriod()).to.be.deep.equal(String(CONTROLLER_LOCK_PERIOD))
+            expect(await controllerContract.vetoHolder()).to.be.deep.equal(String(deployer.address))
 
-            // @ts-ignore
-            await contract.deploy({ params: [ [LOAN_CCY_TOKEN, COLL_CCY_TOKEN], DECIMALS, LOAN_TENOR, // @ts-ignore
-                MAX_LOAN_PER_COLL, [R1, R2], [LIQUIDITY_BND_1, LIQUIDITY_BND_2], MIN_LOAN, // @ts-ignore
-                CREATOR_FEE, MIN_LIQUIDITY, controllerContract.address, REWARD_COEFFICIENT
-            ], responseLatency: 1})
-            await setTime(0)
+            contract = await contractBlueprint.deploy(
+                [LOAN_CCY_TOKEN, COLL_CCY_TOKEN],
+                DECIMALS,
+                LOAN_TENOR,
+                MAX_LOAN_PER_COLL,
+                [R1, R2],
+                [LIQUIDITY_BND_1, LIQUIDITY_BND_2],
+                MIN_LOAN,
+                CREATOR_FEE,
+                MIN_LIQUIDITY,
+                controllerContract.address, 
+                REWARD_COEFFICIENT
+            )
+
+            expect(contract.address).to.be.a('string')
+
+            await checkQuery('getPoolInfo', [],
+                [
+                    LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
+                    0, 0, REWARD_COEFFICIENT, 1
+                ]
+            )
         })
         describe('addLiquidity', function() {
-            it('adds liquidity', async function () {
+            it.only('adds liquidity', async function () {
                 const [alice] = await newUsers([ [LOAN_CCY_TOKEN, 10000] ])
 
                 await contract.call('addLiquidity', 
@@ -4014,9 +3949,9 @@ describe('test BasePool', function () {
                         subTimestamp: 0
                     }], controllerContract)
 
-                    expect(await controllerContract.query('voteTokenTotalSupply', [])).to.be.deep.equal(['200'])
-                    expect(await controllerContract.query('numAccountSnapshots', [alice.address])).to.be.deep.equal(['1'])
-                    expect(await controllerContract.query('getAccountSnapshot', [alice.address, 0])).to.be.deep.equal(
+                    expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('200')
+                    expect(await controllerContract.numAccountSnapshots(alice.address)).to.be.deep.equal('1')
+                    expect(await controllerContract.getAccountSnapshot(alice.address, 0)).to.be.deep.equal(
                         ['200', '0', '0']
                     )
                 })
@@ -4048,8 +3983,8 @@ describe('test BasePool', function () {
                         { caller : alice, tokenId : VOTE_TOKEN, amount : String(200)}
                     )
 
-                    expect(await controllerContract.query('numAccountSnapshots', [alice.address])).to.be.deep.equal(['1'])
-                    expect(await controllerContract.query('getAccountSnapshot', [alice.address, 0])).to.be.deep.equal(
+                    expect(await controllerContract.numAccountSnapshots(alice.address)).to.be.deep.equal('1')
+                    expect(await controllerContract.getAccountSnapshot(alice.address, 0)).to.be.deep.equal(
                         ['200', '1', '0']
                     )
 
@@ -4059,15 +3994,15 @@ describe('test BasePool', function () {
                         { caller : alice }
                     )
 
-                    expect(await controllerContract.query('numAccountSnapshots', [alice.address])).to.be.deep.equal(['2'])
-                    expect(await controllerContract.query('getAccountSnapshot', [alice.address, 0])).to.be.deep.equal(
+                    expect(await controllerContract.numAccountSnapshots(alice.address)).to.be.deep.equal('2')
+                    expect(await controllerContract.getAccountSnapshot(alice.address, 0)).to.be.deep.equal(
                         ['200', '1', '0']
                     )
-                    expect(await controllerContract.query('getAccountSnapshot', [alice.address, 1])).to.be.deep.equal(
+                    expect(await controllerContract.getAccountSnapshot(alice.address, 1)).to.be.deep.equal(
                         ['150', '19', '0']
                     )
                     
-                    expect(await controllerContract.query('voteTokenBalance', [alice.address])).to.be.deep.equal(['150'])
+                    expect(await controllerContract.voteTokenBalance(alice.address)).to.be.deep.equal('150')
                     expect(await alice.balance(VOTE_TOKEN)).to.be.deep.equal(String(1000 - 150))
 
                     await checkEvents([
@@ -4126,7 +4061,7 @@ describe('test BasePool', function () {
                     await controllerContract.call('depositVoteToken', [],
                         { caller : alice, tokenId : VOTE_TOKEN, amount : String(200)}
                     )
-                    expect(await controllerContract.query('lastDepositTimestamp', [alice.address])).to.be.deep.equal(['1'])
+                    expect(await controllerContract.lastDepositTimestamp(alice.address)).to.be.deep.equal('1')
 
                     await setTime(9, controllerContract)
 
@@ -4150,8 +4085,8 @@ describe('test BasePool', function () {
                         deadline : 150
                     }], controllerContract)
 
-                    expect(await controllerContract.query('getProposal', [0])).to.be.deep.equal([contract.address, String(Actions.Pause), '0', ZERO_ADDRESS, false, '150'])
-                    expect(await controllerContract.query('numProposals', [])).to.be.deep.equal(['1'])
+                    expect(await controllerContract.getProposal(0)).to.be.deep.equal([contract.address, String(Actions.Pause), '0', ZERO_ADDRESS, false, '150'])
+                    expect(await controllerContract.numProposals()).to.be.deep.equal('1')
                 })
 
                 it('fails to create a proposal with an incorrect action id', async function ()  {
@@ -4183,7 +4118,7 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    expect(await controllerContract.query('voteTokenTotalSupply', [])).to.be.deep.equal(['1000'])
+                    expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
                     // Alice has 10% of the voting power
 
@@ -4199,7 +4134,7 @@ describe('test BasePool', function () {
                     }], controllerContract)
 
                     // Proposal received 100 votes and wasn't executed
-                    expect(await controllerContract.query('getProposal', [0])).to.be.deep.equal([contract.address, String(Actions.Pause), '100', ZERO_ADDRESS, false, '150'])
+                    expect(await controllerContract.getProposal(0)).to.be.deep.equal([contract.address, String(Actions.Pause), '100', ZERO_ADDRESS, false, '150'])
                 })
 
                 it('votes on multiple proposals', async function () {
@@ -4212,7 +4147,7 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    expect(await controllerContract.query('voteTokenTotalSupply', [])).to.be.deep.equal(['1000'])
+                    expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
                     // Alice has 10% of the voting power
 
@@ -4238,8 +4173,8 @@ describe('test BasePool', function () {
                     }], controllerContract)
 
                     // Proposals received 100 votes and weren't executed
-                    expect(await controllerContract.query('getProposal', [0])).to.be.deep.equal([contract.address, String(Actions.Pause), '100', ZERO_ADDRESS, false, '150'])
-                    expect(await controllerContract.query('getProposal', [1])).to.be.deep.equal([contract.address, String(Actions.Pause), '100', ZERO_ADDRESS, false, '150'])
+                    expect(await controllerContract.getProposal(0)).to.be.deep.equal([contract.address, String(Actions.Pause), '100', ZERO_ADDRESS, false, '150'])
+                    expect(await controllerContract.getProposal(1)).to.be.deep.equal([contract.address, String(Actions.Pause), '100', ZERO_ADDRESS, false, '150'])
                 })
 
                 it('removes a vote on a proposal', async function () {
@@ -4252,7 +4187,7 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    expect(await controllerContract.query('voteTokenTotalSupply', [])).to.be.deep.equal(['1000'])
+                    expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
                     // Alice has 10% of the voting power
 
@@ -4269,7 +4204,7 @@ describe('test BasePool', function () {
                     }], controllerContract)
 
                     // Proposal received 0 votes and wasn't executed
-                    expect(await controllerContract.query('getProposal', [0])).to.be.deep.equal([contract.address, String(Actions.Pause), '0', ZERO_ADDRESS, false, '150'])
+                    expect(await controllerContract.getProposal(0)).to.be.deep.equal([contract.address, String(Actions.Pause), '0', ZERO_ADDRESS, false, '150'])
                 })
 
                 it('votes, removes and re-votes', async function () {
@@ -4282,7 +4217,7 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    expect(await controllerContract.query('voteTokenTotalSupply', [])).to.be.deep.equal(['1000'])
+                    expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
                     // Alice has 10% of the voting power
 
@@ -4300,7 +4235,7 @@ describe('test BasePool', function () {
                     }], controllerContract)
 
                     // Proposal received 100 votes and wasn't executed
-                    expect(await controllerContract.query('getProposal', [0])).to.be.deep.equal([contract.address, String(Actions.Pause), '100', ZERO_ADDRESS, false, '150'])
+                    expect(await controllerContract.getProposal(0)).to.be.deep.equal([contract.address, String(Actions.Pause), '100', ZERO_ADDRESS, false, '150'])
                 })
 
                 it('votes and executes a pause', async function () {
@@ -4313,7 +4248,7 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    expect(await controllerContract.query('voteTokenTotalSupply', [])).to.be.deep.equal(['1000'])
+                    expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
                     // Bob has 90% of the voting power
 
@@ -4337,10 +4272,10 @@ describe('test BasePool', function () {
 
                     // @ts-ignore
                     await vite.utils.waitFor(async () => (await contract.query('paused', []))[0], 'Wait for pause message')
-                    expect(await contract.query('paused', [])).to.be.deep.equal([true])
+                    expect(await contract.paused()).to.be.deep.equal(true)
 
                     // Proposal received 900 votes and was executed
-                    expect(await controllerContract.query('getProposal', [0])).to.be.deep.equal([contract.address, String(Actions.Pause), '900', ZERO_ADDRESS, true, '150'])
+                    expect(await controllerContract.getProposal(0)).to.be.deep.equal([contract.address, String(Actions.Pause), '900', ZERO_ADDRESS, true, '150'])
                 })
 
                 it('pauses and unpauses', async function () {
@@ -4353,7 +4288,7 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    expect(await controllerContract.query('voteTokenTotalSupply', [])).to.be.deep.equal(['1000'])
+                    expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
                     // Bob has 90% of the voting power
 
@@ -4363,7 +4298,7 @@ describe('test BasePool', function () {
 
                     // @ts-ignore
                     await vite.utils.waitFor(async () => (await contract.query('paused', []))[0], 'Wait for pause message')
-                    expect(await contract.query('paused', [])).to.be.deep.equal([true])
+                    expect(await contract.paused()).to.be.deep.equal(true)
 
                     // Unpause
                     await controllerContract.call('createProposal', [contract.address, Actions.Unpause, 150], { caller : alice })
@@ -4385,7 +4320,7 @@ describe('test BasePool', function () {
 
                     // @ts-ignore
                     await vite.utils.waitFor(async () => !(await contract.query('paused', []))[0], 'Wait for unpause message')
-                    expect(await contract.query('paused', [])).to.be.deep.equal([false])
+                    expect(await contract.paused()).to.be.deep.equal(false)
                     
                 })
 
@@ -4399,7 +4334,7 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    expect(await controllerContract.query('voteTokenTotalSupply', [])).to.be.deep.equal(['1000'])
+                    expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
                     // Bob has 90% of the voting power
 
@@ -4409,7 +4344,7 @@ describe('test BasePool', function () {
 
                     // @ts-ignore
                     await vite.utils.waitFor(async () => (await contract.query('paused', []))[0], 'Wait for pause message')
-                    expect(await contract.query('paused', [])).to.be.deep.equal([true])
+                    expect(await contract.paused()).to.be.deep.equal(true)
 
                     await controllerContract.call('removeVote', [0], {caller : bob})
 
@@ -4420,10 +4355,10 @@ describe('test BasePool', function () {
                         newTotalVotes : 0
                     }], controllerContract)
                     
-                    expect(await controllerContract.query('numVotings', [bob.address])).to.be.deep.equal(['0'])
+                    expect(await controllerContract.numVotings(bob.address)).to.be.deep.equal('0')
 
                     // Proposal has 0 votes and was executed
-                    expect(await controllerContract.query('getProposal', [0])).to.be.deep.equal([contract.address, String(Actions.Pause), '0', ZERO_ADDRESS, true, '150'])                    
+                    expect(await controllerContract.getProposal(0)).to.be.deep.equal([contract.address, String(Actions.Pause), '0', ZERO_ADDRESS, true, '150'])                    
                 })
 
                 it('withdraws after removing all votes', async function () {
@@ -4436,7 +4371,7 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    expect(await controllerContract.query('voteTokenTotalSupply', [])).to.be.deep.equal(['1000'])
+                    expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
                     // Bob has 90% of the voting power
 
@@ -4446,7 +4381,7 @@ describe('test BasePool', function () {
 
                     // @ts-ignore
                     await vite.utils.waitFor(async () => (await contract.query('paused', []))[0], 'Wait for pause message')
-                    expect(await contract.query('paused', [])).to.be.deep.equal([true])
+                    expect(await contract.paused()).to.be.deep.equal(true)
 
                     await controllerContract.call('removeVote', [0], {caller : bob})
 
@@ -4491,7 +4426,7 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    expect(await controllerContract.query('voteTokenTotalSupply', [])).to.be.deep.equal(['1000'])
+                    expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
                     // Alice has 10% of the voting power
 
@@ -4513,7 +4448,7 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    expect(await controllerContract.query('voteTokenTotalSupply', [])).to.be.deep.equal(['1000'])
+                    expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
                     // Alice has 10% of the voting power
 
@@ -4534,7 +4469,7 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    expect(await controllerContract.query('voteTokenTotalSupply', [])).to.be.deep.equal(['1000'])
+                    expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
                     // Alice has 10% of the voting power
 
@@ -4561,7 +4496,7 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    expect(await controllerContract.query('voteTokenTotalSupply', [])).to.be.deep.equal(['1000'])
+                    expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
                     // Bob has 90% of the voting power
 
@@ -4571,7 +4506,7 @@ describe('test BasePool', function () {
 
                     // @ts-ignore
                     await vite.utils.waitFor(async () => (await contract.query('paused', []))[0], 'Wait for pause message')
-                    expect(await contract.query('paused', [])).to.be.deep.equal([true])
+                    expect(await contract.paused()).to.be.deep.equal(true)
 
                     await expect(
                         controllerContract.call('vote', [0], {caller : alice})
@@ -4588,7 +4523,7 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    expect(await controllerContract.query('voteTokenTotalSupply', [])).to.be.deep.equal(['1000'])
+                    expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
                     // Bob has 90% of the voting power
 
@@ -4611,7 +4546,7 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    expect(await controllerContract.query('voteTokenTotalSupply', [])).to.be.deep.equal(['1000'])
+                    expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
                     // Bob has 90% of the voting power
 
@@ -4657,9 +4592,9 @@ describe('test BasePool', function () {
                         }
                     ], controllerContract)
 
-                    expect(await controllerContract.query('currentRevenue', [COLL_CCY_TOKEN])).to.be.deep.equal(['0'])
-                    expect(await controllerContract.query('numTokenSnapshots', [COLL_CCY_TOKEN])).to.be.deep.equal(['1'])
-                    expect(await controllerContract.query('getTokenSnapshot', [COLL_CCY_TOKEN, 0])).to.be.deep.equal(['50', '100', '0', '19', '1'])
+                    expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('0')
+                    expect(await controllerContract.numTokenSnapshots(COLL_CCY_TOKEN)).to.be.deep.equal('1')
+                    expect(await controllerContract.getTokenSnapshot(COLL_CCY_TOKEN, 0)).to.be.deep.equal(['50', '100', '0', '19', '1'])
                 })
 
                 it('takes only one snapshot despite multiple revenue deposits', async function () {
@@ -4670,21 +4605,21 @@ describe('test BasePool', function () {
                     )
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '25' })
-                    expect(await controllerContract.query('currentRevenue', [COLL_CCY_TOKEN])).to.be.deep.equal(['0'])
+                    expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('0')
                     
                     await controllerContract.call('depositVoteToken', [],
                         { caller : alice, tokenId : VOTE_TOKEN, amount : String(7)}
                     )
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '100' })
-                    expect(await controllerContract.query('currentRevenue', [COLL_CCY_TOKEN])).to.be.deep.equal(['100'])
+                    expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('100')
                     
                     await setTime(118, controllerContract)
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '200' })
-                    expect(await controllerContract.query('currentRevenue', [COLL_CCY_TOKEN])).to.be.deep.equal(['300'])
+                    expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('300')
 
-                    expect(await controllerContract.query('numTokenSnapshots', [COLL_CCY_TOKEN])).to.be.deep.equal(['1'])
-                    expect(await controllerContract.query('getTokenSnapshot', [COLL_CCY_TOKEN, 0])).to.be.deep.equal(['50', '25', '0', '19', '1'])
+                    expect(await controllerContract.numTokenSnapshots(COLL_CCY_TOKEN)).to.be.deep.equal('1')
+                    expect(await controllerContract.getTokenSnapshot(COLL_CCY_TOKEN, 0)).to.be.deep.equal(['50', '25', '0', '19', '1'])
                 })
 
                 it('takes a second snapshot after enough time has passed', async function () {
@@ -4695,24 +4630,24 @@ describe('test BasePool', function () {
                     )
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '25' })
-                    expect(await controllerContract.query('currentRevenue', [COLL_CCY_TOKEN])).to.be.deep.equal(['0'])
+                    expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('0')
                     
                     await controllerContract.call('depositVoteToken', [],
                         { caller : alice, tokenId : VOTE_TOKEN, amount : String(7)}
                     )
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '100' })
-                    expect(await controllerContract.query('currentRevenue', [COLL_CCY_TOKEN])).to.be.deep.equal(['100'])
+                    expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('100')
 
                     await setTime(119, controllerContract)
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '1' })
-                    expect(await controllerContract.query('currentRevenue', [COLL_CCY_TOKEN])).to.be.deep.equal(['0'])
+                    expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('0')
 
                     
-                    expect(await controllerContract.query('numTokenSnapshots', [COLL_CCY_TOKEN])).to.be.deep.equal(['2'])
-                    expect(await controllerContract.query('getTokenSnapshot', [COLL_CCY_TOKEN, 0])).to.be.deep.equal(['50', '25', '0', '19', '1'])
-                    expect(await controllerContract.query('getTokenSnapshot', [COLL_CCY_TOKEN, 1])).to.be.deep.equal(['57', '101', '0', '119', '0'])
+                    expect(await controllerContract.numTokenSnapshots(COLL_CCY_TOKEN)).to.be.deep.equal('2')
+                    expect(await controllerContract.getTokenSnapshot(COLL_CCY_TOKEN, 0)).to.be.deep.equal(['50', '25', '0', '19', '1'])
+                    expect(await controllerContract.getTokenSnapshot(COLL_CCY_TOKEN, 1)).to.be.deep.equal(['57', '101', '0', '119', '0'])
                 })
 
                 it('takes only one snapshot despite multiple revenue deposits and a force-snapshot-check', async function () {
@@ -4723,20 +4658,20 @@ describe('test BasePool', function () {
                     )
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '25' })
-                    expect(await controllerContract.query('currentRevenue', [COLL_CCY_TOKEN])).to.be.deep.equal(['0'])
+                    expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('0')
                     
                     await controllerContract.call('depositVoteToken', [],
                         { caller : alice, tokenId : VOTE_TOKEN, amount : String(7)}
                     )
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '100' })
-                    expect(await controllerContract.query('currentRevenue', [COLL_CCY_TOKEN])).to.be.deep.equal(['100'])
+                    expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('100')
                     
                     await setTime(118, controllerContract)
                     await controllerContract.call('forceTokenSnapshotCheck', [COLL_CCY_TOKEN], { caller : alice })
 
-                    expect(await controllerContract.query('numTokenSnapshots', [COLL_CCY_TOKEN])).to.be.deep.equal(['1'])
-                    expect(await controllerContract.query('getTokenSnapshot', [COLL_CCY_TOKEN, 0])).to.be.deep.equal(['50', '25', '0', '19', '1'])
+                    expect(await controllerContract.numTokenSnapshots(COLL_CCY_TOKEN)).to.be.deep.equal('1')
+                    expect(await controllerContract.getTokenSnapshot(COLL_CCY_TOKEN, 0)).to.be.deep.equal(['50', '25', '0', '19', '1'])
                 })
 
                 it('forces a second snapshot after enough time has passed', async function () {
@@ -4747,23 +4682,23 @@ describe('test BasePool', function () {
                     )
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '25' })
-                    expect(await controllerContract.query('currentRevenue', [COLL_CCY_TOKEN])).to.be.deep.equal(['0'])
+                    expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('0')
                     
                     await controllerContract.call('depositVoteToken', [],
                         { caller : alice, tokenId : VOTE_TOKEN, amount : String(7)}
                     )
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '100' })
-                    expect(await controllerContract.query('currentRevenue', [COLL_CCY_TOKEN])).to.be.deep.equal(['100'])
+                    expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('100')
 
                     await setTime(119, controllerContract)
                     await controllerContract.call('forceTokenSnapshotCheck', [COLL_CCY_TOKEN], { caller : alice })
-                    expect(await controllerContract.query('currentRevenue', [COLL_CCY_TOKEN])).to.be.deep.equal(['0'])
+                    expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('0')
 
                     
-                    expect(await controllerContract.query('numTokenSnapshots', [COLL_CCY_TOKEN])).to.be.deep.equal(['2'])
-                    expect(await controllerContract.query('getTokenSnapshot', [COLL_CCY_TOKEN, 0])).to.be.deep.equal(['50', '25', '0', '19', '1'])
-                    expect(await controllerContract.query('getTokenSnapshot', [COLL_CCY_TOKEN, 1])).to.be.deep.equal(['57', '100', '0', '119', '0'])
+                    expect(await controllerContract.numTokenSnapshots(COLL_CCY_TOKEN)).to.be.deep.equal('2')
+                    expect(await controllerContract.getTokenSnapshot(COLL_CCY_TOKEN, 0)).to.be.deep.equal(['50', '25', '0', '19', '1'])
+                    expect(await controllerContract.getTokenSnapshot(COLL_CCY_TOKEN, 1)).to.be.deep.equal(['57', '100', '0', '119', '0'])
                 })
 
                 it('takes snapshots for multiple intertwined tokens', async function () {
@@ -4774,66 +4709,66 @@ describe('test BasePool', function () {
                     )
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '25' })
-                    expect(await controllerContract.query('currentRevenue', [COLL_CCY_TOKEN])).to.be.deep.equal(['0'])
+                    expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('0')
 
                     await setTime(29, controllerContract)
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '14' })
-                    expect(await controllerContract.query('currentRevenue', [COLL_CCY_TOKEN])).to.be.deep.equal(['0'])
-                    expect(await controllerContract.query('currentRevenue', [LOAN_CCY_TOKEN])).to.be.deep.equal(['0'])
+                    expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('0')
+                    expect(await controllerContract.currentRevenue(LOAN_CCY_TOKEN)).to.be.deep.equal('0')
 
 
-                    expect(await controllerContract.query('numTokenSnapshots', [COLL_CCY_TOKEN])).to.be.deep.equal(['1'])
-                    expect(await controllerContract.query('getTokenSnapshot', [COLL_CCY_TOKEN, 0])).to.be.deep.equal(['50', '25', '0', '19', '1'])
-                    expect(await controllerContract.query('numTokenSnapshots', [LOAN_CCY_TOKEN])).to.be.deep.equal(['1'])
-                    expect(await controllerContract.query('getTokenSnapshot', [LOAN_CCY_TOKEN, 0])).to.be.deep.equal(['50', '14', '0', '29', '0'])
+                    expect(await controllerContract.numTokenSnapshots(COLL_CCY_TOKEN)).to.be.deep.equal('1')
+                    expect(await controllerContract.getTokenSnapshot(COLL_CCY_TOKEN, 0)).to.be.deep.equal(['50', '25', '0', '19', '1'])
+                    expect(await controllerContract.numTokenSnapshots(LOAN_CCY_TOKEN)).to.be.deep.equal('1')
+                    expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(['50', '14', '0', '29', '0'])
 
                     // Doesn't trigger anything
                     await controllerContract.call('depositVoteToken', [],
                         { caller : alice, tokenId : VOTE_TOKEN, amount : String(7)}
                     )
 
-                    expect(await controllerContract.query('numTokenSnapshots', [COLL_CCY_TOKEN])).to.be.deep.equal(['1'])
-                    expect(await controllerContract.query('getTokenSnapshot', [COLL_CCY_TOKEN, 0])).to.be.deep.equal(['50', '25', '0', '19', '1'])
-                    expect(await controllerContract.query('numTokenSnapshots', [LOAN_CCY_TOKEN])).to.be.deep.equal(['1'])
-                    expect(await controllerContract.query('getTokenSnapshot', [LOAN_CCY_TOKEN, 0])).to.be.deep.equal(['50', '14', '0', '29', '0'])
+                    expect(await controllerContract.numTokenSnapshots(COLL_CCY_TOKEN)).to.be.deep.equal('1')
+                    expect(await controllerContract.getTokenSnapshot(COLL_CCY_TOKEN, 0)).to.be.deep.equal(['50', '25', '0', '19', '1'])
+                    expect(await controllerContract.numTokenSnapshots(LOAN_CCY_TOKEN)).to.be.deep.equal('1')
+                    expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(['50', '14', '0', '29', '0'])
 
                     // Doesn't trigger anything
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '100' })
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '100' })
-                    expect(await controllerContract.query('currentRevenue', [COLL_CCY_TOKEN])).to.be.deep.equal(['100'])
-                    expect(await controllerContract.query('currentRevenue', [LOAN_CCY_TOKEN])).to.be.deep.equal(['100'])
+                    expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('100')
+                    expect(await controllerContract.currentRevenue(LOAN_CCY_TOKEN)).to.be.deep.equal('100')
 
-                    expect(await controllerContract.query('numTokenSnapshots', [COLL_CCY_TOKEN])).to.be.deep.equal(['1'])
-                    expect(await controllerContract.query('getTokenSnapshot', [COLL_CCY_TOKEN, 0])).to.be.deep.equal(['50', '25', '0', '19', '1'])
-                    expect(await controllerContract.query('numTokenSnapshots', [LOAN_CCY_TOKEN])).to.be.deep.equal(['1'])
-                    expect(await controllerContract.query('getTokenSnapshot', [LOAN_CCY_TOKEN, 0])).to.be.deep.equal(['50', '14', '0', '29', '0'])
+                    expect(await controllerContract.numTokenSnapshots(COLL_CCY_TOKEN)).to.be.deep.equal('1')
+                    expect(await controllerContract.getTokenSnapshot(COLL_CCY_TOKEN, 0)).to.be.deep.equal(['50', '25', '0', '19', '1'])
+                    expect(await controllerContract.numTokenSnapshots(LOAN_CCY_TOKEN)).to.be.deep.equal('1')
+                    expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(['50', '14', '0', '29', '0'])
 
                     // Late enough for COLL to trigger (but not LOAN)
                     await setTime(119, controllerContract)
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '1' })
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2' })
-                    expect(await controllerContract.query('currentRevenue', [COLL_CCY_TOKEN])).to.be.deep.equal(['0'])
-                    expect(await controllerContract.query('currentRevenue', [LOAN_CCY_TOKEN])).to.be.deep.equal(['102'])
+                    expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('0')
+                    expect(await controllerContract.currentRevenue(LOAN_CCY_TOKEN)).to.be.deep.equal('102')
 
-                    expect(await controllerContract.query('numTokenSnapshots', [COLL_CCY_TOKEN])).to.be.deep.equal(['2'])
-                    expect(await controllerContract.query('getTokenSnapshot', [COLL_CCY_TOKEN, 0])).to.be.deep.equal(['50', '25', '0', '19', '1'])
-                    expect(await controllerContract.query('getTokenSnapshot', [COLL_CCY_TOKEN, 1])).to.be.deep.equal(['57', '101', '0', '119', '0'])
-                    expect(await controllerContract.query('numTokenSnapshots', [LOAN_CCY_TOKEN])).to.be.deep.equal(['1'])
-                    expect(await controllerContract.query('getTokenSnapshot', [LOAN_CCY_TOKEN, 0])).to.be.deep.equal(['50', '14', '0', '29', '0'])
+                    expect(await controllerContract.numTokenSnapshots(COLL_CCY_TOKEN)).to.be.deep.equal('2')
+                    expect(await controllerContract.getTokenSnapshot(COLL_CCY_TOKEN, 0)).to.be.deep.equal(['50', '25', '0', '19', '1'])
+                    expect(await controllerContract.getTokenSnapshot(COLL_CCY_TOKEN, 1)).to.be.deep.equal(['57', '101', '0', '119', '0'])
+                    expect(await controllerContract.numTokenSnapshots(LOAN_CCY_TOKEN)).to.be.deep.equal('1')
+                    expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(['50', '14', '0', '29', '0'])
 
                     // Late enough for LOAN to trigger (but COLL has already been triggered)
                     await setTime(129, controllerContract)
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '3' })
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '5' })
-                    expect(await controllerContract.query('currentRevenue', [COLL_CCY_TOKEN])).to.be.deep.equal(['3'])
-                    expect(await controllerContract.query('currentRevenue', [LOAN_CCY_TOKEN])).to.be.deep.equal(['0'])
+                    expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('3')
+                    expect(await controllerContract.currentRevenue(LOAN_CCY_TOKEN)).to.be.deep.equal('0')
 
-                    expect(await controllerContract.query('numTokenSnapshots', [COLL_CCY_TOKEN])).to.be.deep.equal(['2'])
-                    expect(await controllerContract.query('getTokenSnapshot', [COLL_CCY_TOKEN, 0])).to.be.deep.equal(['50', '25', '0', '19', '1'])
-                    expect(await controllerContract.query('getTokenSnapshot', [COLL_CCY_TOKEN, 1])).to.be.deep.equal(['57', '101', '0', '119', '0'])
-                    expect(await controllerContract.query('numTokenSnapshots', [LOAN_CCY_TOKEN])).to.be.deep.equal(['2'])
-                    expect(await controllerContract.query('getTokenSnapshot', [LOAN_CCY_TOKEN, 0])).to.be.deep.equal(['50', '14', '0', '29', '0'])
-                    expect(await controllerContract.query('getTokenSnapshot', [LOAN_CCY_TOKEN, 1])).to.be.deep.equal(['57', '107', '0', '129', '1'])
+                    expect(await controllerContract.numTokenSnapshots(COLL_CCY_TOKEN)).to.be.deep.equal('2')
+                    expect(await controllerContract.getTokenSnapshot(COLL_CCY_TOKEN, 0)).to.be.deep.equal(['50', '25', '0', '19', '1'])
+                    expect(await controllerContract.getTokenSnapshot(COLL_CCY_TOKEN, 1)).to.be.deep.equal(['57', '101', '0', '119', '0'])
+                    expect(await controllerContract.numTokenSnapshots(LOAN_CCY_TOKEN)).to.be.deep.equal('2')
+                    expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(['50', '14', '0', '29', '0'])
+                    expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 1)).to.be.deep.equal(['57', '107', '0', '129', '1'])
                 })
             })
 
@@ -4851,15 +4786,15 @@ describe('test BasePool', function () {
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
                     // Snapshot has been taken
-                    expect(await controllerContract.query('numTokenSnapshots', [LOAN_CCY_TOKEN])).to.be.deep.equal(['1'])
-                    expect(await controllerContract.query('getTokenSnapshot', [LOAN_CCY_TOKEN, 0])).to.be.deep.equal(['500', '2000', '0', '0', '2'])
-                    expect(await controllerContract.query('getAccountSnapshot', [bob.address, 0])).to.be.deep.equal(['50', '0', '0'])
+                    expect(await controllerContract.numTokenSnapshots(LOAN_CCY_TOKEN)).to.be.deep.equal('1')
+                    expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(['500', '2000', '0', '0', '2'])
+                    expect(await controllerContract.getAccountSnapshot(bob.address, 0)).to.be.deep.equal(['50', '0', '0'])
 
                     // Bob claims
                     console.log('Checking before...')
                     expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal('0')
                     await controllerContract.call('claimToken', [LOAN_CCY_TOKEN, 0, 0], { caller : bob })
-                    expect(await controllerContract.query('hasClaimedSnapshot', [LOAN_CCY_TOKEN, 0, bob.address])).to.be.deep.equal([true])
+                    expect(await controllerContract.hasClaimedSnapshot(LOAN_CCY_TOKEN, 0, bob.address)).to.be.deep.equal(true)
 
                     await checkEvents([
                         {
@@ -4872,14 +4807,14 @@ describe('test BasePool', function () {
                         }
                     ], controllerContract)
 
-                    expect(await controllerContract.query('getTokenSnapshot', [LOAN_CCY_TOKEN, 0])).to.be.deep.equal(
+                    expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(
                         ['500', '2000', '200', '0', '2']
                     )
                     expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal('200')
 
                     // Charlie claims
                     await controllerContract.call('claimToken', [LOAN_CCY_TOKEN, 0, 0], { caller : charlie })
-                    expect(await controllerContract.query('hasClaimedSnapshot', [LOAN_CCY_TOKEN, 0, charlie.address])).to.be.deep.equal([true])
+                    expect(await controllerContract.hasClaimedSnapshot(LOAN_CCY_TOKEN, 0, charlie.address)).to.be.deep.equal(true)
 
                     await checkEvents([
                         {
@@ -4892,7 +4827,7 @@ describe('test BasePool', function () {
                         }
                     ], controllerContract)
 
-                    expect(await controllerContract.query('getTokenSnapshot', [LOAN_CCY_TOKEN, 0])).to.be.deep.equal(
+                    expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(
                         ['500', '2000', '2000', '0', '2']
                     )
                     expect(await charlie.balance(LOAN_CCY_TOKEN)).to.be.deep.equal('1800')
@@ -4912,7 +4847,7 @@ describe('test BasePool', function () {
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
                     // Snapshot has been taken at time 0
 
-                    expect(await controllerContract.query('getTokenSnapshot', [LOAN_CCY_TOKEN, 0])).to.be.deep.equal(
+                    expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(
                         ['500', '2000', '0', '0', '2']
                     )
 
@@ -4929,17 +4864,17 @@ describe('test BasePool', function () {
                     await setTime(100, controllerContract)
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '3000' })
-                    expect(await controllerContract.query('numTokenSnapshots', [LOAN_CCY_TOKEN])).to.be.deep.equal(['2'])
+                    expect(await controllerContract.numTokenSnapshots(LOAN_CCY_TOKEN)).to.be.deep.equal('2')
 
                     // Snapshot has been taken at time 100
-                    expect(await controllerContract.query('getTokenSnapshot', [LOAN_CCY_TOKEN, 1])).to.be.deep.equal(
+                    expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 1)).to.be.deep.equal(
                         ['1000', '3000', '0', '100', '0']
                     )
 
                     // Bob claims
                     await controllerContract.call('claimToken', [LOAN_CCY_TOKEN, 0, 0], { caller : bob })
                     console.log('Bob 0')
-                    expect(await controllerContract.query('hasClaimedSnapshot', [LOAN_CCY_TOKEN, 0, bob.address])).to.be.deep.equal([true])
+                    expect(await controllerContract.hasClaimedSnapshot(LOAN_CCY_TOKEN, 0, bob.address)).to.be.deep.equal(true)
 
                     await checkEvents([
                         {
@@ -4952,7 +4887,7 @@ describe('test BasePool', function () {
                         }
                     ], controllerContract)
 
-                    expect(await controllerContract.query('getTokenSnapshot', [LOAN_CCY_TOKEN, 0])).to.be.deep.equal(
+                    expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(
                         ['500', '2000', '200', '0', '2']
                     )
                     expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal('200')
@@ -4960,7 +4895,7 @@ describe('test BasePool', function () {
                     // Charlie claims
                     await controllerContract.call('claimToken', [LOAN_CCY_TOKEN, 0, 0], { caller : charlie })
                     console.log('Charlie 0')
-                    expect(await controllerContract.query('hasClaimedSnapshot', [LOAN_CCY_TOKEN, 0, charlie.address])).to.be.deep.equal([true])
+                    expect(await controllerContract.hasClaimedSnapshot(LOAN_CCY_TOKEN, 0, charlie.address)).to.be.deep.equal(true)
 
                     await checkEvents([
                         {
@@ -4973,7 +4908,7 @@ describe('test BasePool', function () {
                         }
                     ], controllerContract)
 
-                    expect(await controllerContract.query('getTokenSnapshot', [LOAN_CCY_TOKEN, 0])).to.be.deep.equal(
+                    expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(
                         ['500', '2000', '2000', '0', '2']
                     )
                     expect(await charlie.balance(LOAN_CCY_TOKEN)).to.be.deep.equal('1800')
@@ -4983,7 +4918,7 @@ describe('test BasePool', function () {
                     // Bob claims
                     await controllerContract.call('claimToken', [LOAN_CCY_TOKEN, 1, 1], { caller : bob })
                     console.log('Bob 1')
-                    expect(await controllerContract.query('hasClaimedSnapshot', [LOAN_CCY_TOKEN, 1, bob.address])).to.be.deep.equal([true])
+                    expect(await controllerContract.hasClaimedSnapshot(LOAN_CCY_TOKEN, 1, bob.address)).to.be.deep.equal(true)
 
                     await checkEvents([
                         {
@@ -4996,7 +4931,7 @@ describe('test BasePool', function () {
                         }
                     ], controllerContract)
 
-                    expect(await controllerContract.query('getTokenSnapshot', [LOAN_CCY_TOKEN, 1])).to.be.deep.equal(
+                    expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 1)).to.be.deep.equal(
                         ['1000', '3000', '600', '100', '0']
                     )
                     expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(200 + 600))
@@ -5004,7 +4939,7 @@ describe('test BasePool', function () {
                     // Charlie claims
                     await controllerContract.call('claimToken', [LOAN_CCY_TOKEN, 1, 1], { caller : charlie })
                     console.log('Charlie 1')
-                    expect(await controllerContract.query('hasClaimedSnapshot', [LOAN_CCY_TOKEN, 1, charlie.address])).to.be.deep.equal([true])
+                    expect(await controllerContract.hasClaimedSnapshot(LOAN_CCY_TOKEN, 1, charlie.address)).to.be.deep.equal(true)
 
                     await checkEvents([
                         {
@@ -5017,7 +4952,7 @@ describe('test BasePool', function () {
                         }
                     ], controllerContract)
 
-                    expect(await controllerContract.query('getTokenSnapshot', [LOAN_CCY_TOKEN, 1])).to.be.deep.equal(
+                    expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 1)).to.be.deep.equal(
                         ['1000', '3000', '3000', '100', '0']
                     )
                     expect(await charlie.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(1800 + 2400))
@@ -5033,9 +4968,9 @@ describe('test BasePool', function () {
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
                     // Snapshot has been taken
-                    expect(await controllerContract.query('numTokenSnapshots', [LOAN_CCY_TOKEN])).to.be.deep.equal(['1'])
-                    expect(await controllerContract.query('getTokenSnapshot', [LOAN_CCY_TOKEN, 0])).to.be.deep.equal(['50', '2000', '0', '0', '1'])
-                    expect(await controllerContract.query('getAccountSnapshot', [bob.address, 0])).to.be.deep.equal(['50', '0', '0'])
+                    expect(await controllerContract.numTokenSnapshots(LOAN_CCY_TOKEN)).to.be.deep.equal('1')
+                    expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(['50', '2000', '0', '0', '1'])
+                    expect(await controllerContract.getAccountSnapshot(bob.address, 0)).to.be.deep.equal(['50', '0', '0'])
 
                     // Bob claims
                     await controllerContract.call('claimToken', [LOAN_CCY_TOKEN, 0, 0], { caller : bob })
@@ -5055,9 +4990,9 @@ describe('test BasePool', function () {
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
                     // Snapshot has been taken
-                    expect(await controllerContract.query('numTokenSnapshots', [LOAN_CCY_TOKEN])).to.be.deep.equal(['1'])
-                    expect(await controllerContract.query('getTokenSnapshot', [LOAN_CCY_TOKEN, 0])).to.be.deep.equal(['50', '2000', '0', '0', '1'])
-                    expect(await controllerContract.query('getAccountSnapshot', [bob.address, 0])).to.be.deep.equal(['50', '0', '0'])
+                    expect(await controllerContract.numTokenSnapshots(LOAN_CCY_TOKEN)).to.be.deep.equal('1')
+                    expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(['50', '2000', '0', '0', '1'])
+                    expect(await controllerContract.getAccountSnapshot(bob.address, 0)).to.be.deep.equal(['50', '0', '0'])
 
                     await expect(
                         controllerContract.call('claimToken', [LOAN_CCY_TOKEN, 1, 0], { caller : bob })
@@ -5073,9 +5008,9 @@ describe('test BasePool', function () {
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
                     // Snapshot has been taken
-                    expect(await controllerContract.query('numTokenSnapshots', [LOAN_CCY_TOKEN])).to.be.deep.equal(['1'])
-                    expect(await controllerContract.query('getTokenSnapshot', [LOAN_CCY_TOKEN, 0])).to.be.deep.equal(['50', '2000', '0', '0', '1'])
-                    expect(await controllerContract.query('getAccountSnapshot', [bob.address, 0])).to.be.deep.equal(['50', '0', '0'])
+                    expect(await controllerContract.numTokenSnapshots(LOAN_CCY_TOKEN)).to.be.deep.equal('1')
+                    expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(['50', '2000', '0', '0', '1'])
+                    expect(await controllerContract.getAccountSnapshot(bob.address, 0)).to.be.deep.equal(['50', '0', '0'])
 
                     await expect(
                         controllerContract.call('claimToken', [LOAN_CCY_TOKEN, 0, 1], { caller : bob })
@@ -5091,9 +5026,9 @@ describe('test BasePool', function () {
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
                     // Snapshot has been taken
-                    expect(await controllerContract.query('numTokenSnapshots', [LOAN_CCY_TOKEN])).to.be.deep.equal(['1'])
-                    expect(await controllerContract.query('getTokenSnapshot', [LOAN_CCY_TOKEN, 0])).to.be.deep.equal(['50', '2000', '0', '0', '1'])
-                    expect(await controllerContract.query('getAccountSnapshot', [bob.address, 0])).to.be.deep.equal(['50', '0', '0'])
+                    expect(await controllerContract.numTokenSnapshots(LOAN_CCY_TOKEN)).to.be.deep.equal('1')
+                    expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(['50', '2000', '0', '0', '1'])
+                    expect(await controllerContract.getAccountSnapshot(bob.address, 0)).to.be.deep.equal(['50', '0', '0'])
 
                     await setTime(100, controllerContract)
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
@@ -5113,9 +5048,9 @@ describe('test BasePool', function () {
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
                     // Snapshot has been taken
-                    expect(await controllerContract.query('numTokenSnapshots', [LOAN_CCY_TOKEN])).to.be.deep.equal(['1'])
-                    expect(await controllerContract.query('getTokenSnapshot', [LOAN_CCY_TOKEN, 0])).to.be.deep.equal(['50', '2000', '0', '0', '1'])
-                    expect(await controllerContract.query('getAccountSnapshot', [bob.address, 0])).to.be.deep.equal(['50', '0', '0'])
+                    expect(await controllerContract.numTokenSnapshots(LOAN_CCY_TOKEN)).to.be.deep.equal('1')
+                    expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(['50', '2000', '0', '0', '1'])
+                    expect(await controllerContract.getAccountSnapshot(bob.address, 0)).to.be.deep.equal(['50', '0', '0'])
 
                     // Deposit vote tokens again
                     await controllerContract.call('depositVoteToken', [],
@@ -5287,14 +5222,14 @@ describe('test BasePool', function () {
                     await checkQuery('getAccountSnapshot', [bob.address, 0], [50, 0, 0], controllerContract)
                     await checkQuery('getAccountSnapshot', [charlie.address, 0], [450, 0, 1], controllerContract)
                     await checkQuery('getTokenSnapshot', [LOAN_CCY_TOKEN, 0], [500, 2000, 2000, 0, 2], controllerContract)
-                    expect(await controllerContract.query('hasClaimedSnapshot', [LOAN_CCY_TOKEN, 0, bob.address])).to.be.deep.equal([true])
-                    expect(await controllerContract.query('hasClaimedSnapshot', [LOAN_CCY_TOKEN, 0, charlie.address])).to.be.deep.equal([true])
+                    expect(await controllerContract.hasClaimedSnapshot(LOAN_CCY_TOKEN, 0, bob.address)).to.be.deep.equal(true)
+                    expect(await controllerContract.hasClaimedSnapshot(LOAN_CCY_TOKEN, 0, charlie.address)).to.be.deep.equal(true)
 
                     await checkQuery('getAccountSnapshot', [bob.address, 1], [300, 0, 3], controllerContract)
                     await checkQuery('getAccountSnapshot', [charlie.address, 1], [700, 0, 4], controllerContract)
                     await checkQuery('getTokenSnapshot', [LOAN_CCY_TOKEN, 1], [1000, 3000, 3000, 100, 0], controllerContract)
-                    expect(await controllerContract.query('hasClaimedSnapshot', [LOAN_CCY_TOKEN, 1, bob.address])).to.be.deep.equal([true])
-                    expect(await controllerContract.query('hasClaimedSnapshot', [LOAN_CCY_TOKEN, 1, charlie.address])).to.be.deep.equal([true])
+                    expect(await controllerContract.hasClaimedSnapshot(LOAN_CCY_TOKEN, 1, bob.address)).to.be.deep.equal(true)
+                    expect(await controllerContract.hasClaimedSnapshot(LOAN_CCY_TOKEN, 1, charlie.address)).to.be.deep.equal(true)
 
                     const expectedBobAmount = 2000 * (50 / 500) + 3000 * (300 / 1000)
                     const expectedCharlieAmount = 2000 * (450 / 500) + 3000 * (700 / 1000)
@@ -5424,14 +5359,14 @@ describe('test BasePool', function () {
                     await checkQuery('getAccountSnapshot', [bob.address, 0], [50, 0, 0], controllerContract)
                     await checkQuery('getAccountSnapshot', [charlie.address, 0], [450, 0, 1], controllerContract)
                     await checkQuery('getTokenSnapshot', [LOAN_CCY_TOKEN, 0], [500, 2000, 2000, 0, 2], controllerContract)
-                    expect(await controllerContract.query('hasClaimedSnapshot', [LOAN_CCY_TOKEN, 0, bob.address])).to.be.deep.equal([true])
-                    expect(await controllerContract.query('hasClaimedSnapshot', [LOAN_CCY_TOKEN, 0, charlie.address])).to.be.deep.equal([true])
+                    expect(await controllerContract.hasClaimedSnapshot(LOAN_CCY_TOKEN, 0, bob.address)).to.be.deep.equal(true)
+                    expect(await controllerContract.hasClaimedSnapshot(LOAN_CCY_TOKEN, 0, charlie.address)).to.be.deep.equal(true)
 
                     await checkQuery('getAccountSnapshot', [bob.address, 1], [300, 0, 3], controllerContract)
                     await checkQuery('getAccountSnapshot', [charlie.address, 1], [700, 0, 4], controllerContract)
                     await checkQuery('getTokenSnapshot', [LOAN_CCY_TOKEN, 1], [1000, 3000, 3000, 100, 0], controllerContract)
-                    expect(await controllerContract.query('hasClaimedSnapshot', [LOAN_CCY_TOKEN, 1, bob.address])).to.be.deep.equal([true])
-                    expect(await controllerContract.query('hasClaimedSnapshot', [LOAN_CCY_TOKEN, 1, charlie.address])).to.be.deep.equal([true])
+                    expect(await controllerContract.hasClaimedSnapshot(LOAN_CCY_TOKEN, 1, bob.address)).to.be.deep.equal(true)
+                    expect(await controllerContract.hasClaimedSnapshot(LOAN_CCY_TOKEN, 1, charlie.address)).to.be.deep.equal(true)
 
                     const expectedBobAmount = 2000 * (50 / 500) + 3000 * (300 / 1000)
                     const expectedCharlieAmount = 2000 * (450 / 500) + 3000 * (700 / 1000)
@@ -5712,7 +5647,7 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    expect(await controllerContract.query('voteTokenTotalSupply', [])).to.be.deep.equal(['1000'])
+                    expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
                     // Alice has 10% of the voting power
 
@@ -5770,7 +5705,7 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    expect(await controllerContract.query('voteTokenTotalSupply', [])).to.be.deep.equal(['1000'])
+                    expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
                     // Alice has 10% of the voting power
 
@@ -5898,7 +5833,7 @@ describe('test BasePool', function () {
                     await controllerContract.call('createProposal', [contract.address, Actions.Whitelist, 150], { caller : alice })
 
                     await controllerContract.call('setVetoHolderApproval', [0, true], { caller : deployer })
-                    expect(await controllerContract.query('getProposal', [0])).to.be.deep.equal([contract.address, String(Actions.Whitelist), '0', deployer.address, false, '150'])
+                    expect(await controllerContract.getProposal(0)).to.be.deep.equal([contract.address, String(Actions.Whitelist), '0', deployer.address, false, '150'])
                     
                     await checkEvents([
                         {
@@ -5921,7 +5856,7 @@ describe('test BasePool', function () {
                     await controllerContract.call('createProposal', [contract.address, Actions.Whitelist, 150], { caller : alice })
 
                     await controllerContract.call('setVetoHolderApproval', [0, true], { caller : deployer })
-                    expect(await controllerContract.query('getProposal', [0])).to.be.deep.equal([contract.address, String(Actions.Whitelist), '0', deployer.address, false, '150'])
+                    expect(await controllerContract.getProposal(0)).to.be.deep.equal([contract.address, String(Actions.Whitelist), '0', deployer.address, false, '150'])
 
                     await checkEvents([
                         {
@@ -6015,7 +5950,7 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    expect(await controllerContract.query('voteTokenTotalSupply', [])).to.be.deep.equal(['1000'])
+                    expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
                     // Alice has 10% of the voting power
 
@@ -6056,7 +5991,7 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    expect(await controllerContract.query('voteTokenTotalSupply', [])).to.be.deep.equal(['1000'])
+                    expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
                     // Alice has 10% of the voting power
 
@@ -6105,7 +6040,7 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    expect(await controllerContract.query('voteTokenTotalSupply', [])).to.be.deep.equal(['1000'])
+                    expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
                     // Alice has 10% of the voting power
 
@@ -6169,7 +6104,7 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    expect(await controllerContract.query('voteTokenTotalSupply', [])).to.be.deep.equal(['1000'])
+                    expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
                     // Transfer veto power to the zero-address
                     await checkQuery('vetoHolder', [], [deployer.address], controllerContract)
@@ -6217,7 +6152,7 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    expect(await controllerContract.query('voteTokenTotalSupply', [])).to.be.deep.equal(['1000'])
+                    expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
                     // Alice has 10% of the voting power
 
@@ -6271,7 +6206,7 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    expect(await controllerContract.query('voteTokenTotalSupply', [])).to.be.deep.equal(['1000'])
+                    expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
                     // Alice has 10% of the voting power
 
@@ -6299,7 +6234,7 @@ describe('test BasePool', function () {
                         [dan.address, liquidity, duration, rewardCoefficient, 0],
                         { caller : charlie }
                     )
-                    expect(await controllerContract.query('receivedReward', [charlie.address, 0])).to.be.deep.equal([true])
+                    expect(await controllerContract.receivedReward(charlie.address, 0)).to.be.deep.equal(true)
 
                     await expect(
                         controllerContract.call(
@@ -6340,7 +6275,7 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    expect(await controllerContract.query('voteTokenTotalSupply', [])).to.be.deep.equal(['1000'])
+                    expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
                     // Alice has 10% of the voting power
 
@@ -6374,7 +6309,7 @@ describe('test BasePool', function () {
         })
     })
 
-    describe('loanTerms', function () {
+    /*describe('loanTerms', function () {
         const setups = [
             {
                 maxLoanPerColl: MAX_LOAN_PER_COLL,
@@ -6475,12 +6410,12 @@ describe('test BasePool', function () {
                 await controllerContract.deploy({ params : [VOTE_TOKEN, PAUSE_THRESHOLD, UNPAUSE_THRESHOLD, WHITELIST_THRESHOLD, DEWHITELIST_THRESHOLD, String(SNAPSHOT_TOKEN_EVERY), String(CONTROLLER_LOCK_PERIOD), deployer.address ]
                     , responseLatency: 1})
                     expect(controllerContract.address).to.be.a('string')
-                    expect(await controllerContract.query('voteToken', [])).to.be.deep.equal([VOTE_TOKEN])
-                    expect(await controllerContract.query('pauseThreshold', [])).to.be.deep.equal([String(PAUSE_THRESHOLD)])
-                    expect(await controllerContract.query('unpauseThreshold', [])).to.be.deep.equal([String(UNPAUSE_THRESHOLD)])
-                    expect(await controllerContract.query('whitelistThreshold', [])).to.be.deep.equal([String(WHITELIST_THRESHOLD)])
-                    expect(await controllerContract.query('dewhitelistThreshold', [])).to.be.deep.equal([String(DEWHITELIST_THRESHOLD)])
-                    expect(await controllerContract.query('vetoHolder', [])).to.be.deep.equal([String(deployer.address)])
+                    expect(await controllerContract.voteToken()).to.be.deep.equal(VOTE_TOKEN)
+                    expect(await controllerContract.pauseThreshold()).to.be.deep.equal(String(PAUSE_THRESHOLD))
+                    expect(await controllerContract.unpauseThreshold()).to.be.deep.equal(String(UNPAUSE_THRESHOLD))
+                    expect(await controllerContract.whitelistThreshold()).to.be.deep.equal(String(WHITELIST_THRESHOLD))
+                    expect(await controllerContract.dewhitelistThreshold()).to.be.deep.equal(String(DEWHITELIST_THRESHOLD))
+                    expect(await controllerContract.vetoHolder()).to.be.deep.equal(String(deployer.address))
                 
                     // @ts-ignore
                     await contract.deploy({ params: [ [LOAN_CCY_TOKEN, COLL_CCY_TOKEN], String(setup.decimals), LOAN_TENOR, // @ts-ignore
@@ -6513,37 +6448,44 @@ describe('test BasePool', function () {
                 }
             })
         }
-    })
+    })*/
 
     describe('creatorFee', function () {
         it('checks that the Controller receives the creator fee', async function () {
-            // compile
-            const compiledContracts = await compile('contracts/Controller_parsed.solpp')
-            expect(compiledContracts).to.have.property('Controller')
-            controllerContract = compiledContracts.Controller
-            // deploy
-            controllerContract.setDeployer(deployer).setProvider(provider)
-            // console.log(contract)
-            console.log(controllerContract.provider._provider.ERRORS)
+            controllerContract = await controllerContractBlueprint.deploy(
+                VOTE_TOKEN,
+                PAUSE_THRESHOLD,
+                UNPAUSE_THRESHOLD,
+                WHITELIST_THRESHOLD, 
+                DEWHITELIST_THRESHOLD,
+                String(SNAPSHOT_TOKEN_EVERY), 
+                String(CONTROLLER_LOCK_PERIOD),
+                deployer.address
+            )
 
-            // compile
-            const compiledContracts2 = await compile('contracts/BasePool_parsed.solpp')
-            expect(compiledContracts2).to.have.property('BasePool')
-            contract = compiledContracts2.BasePool
-            // deploy
-            contract.setDeployer(deployer).setProvider(provider)
-            // console.log(contract)
-            console.log(contract.provider._provider.ERRORS)
+            expect(controllerContract.address).to.be.a('string')
+            expect(await controllerContract.voteToken()).to.be.deep.equal(VOTE_TOKEN)
+            expect(await controllerContract.pauseThreshold()).to.be.deep.equal(String(PAUSE_THRESHOLD))
+            expect(await controllerContract.unpauseThreshold()).to.be.deep.equal(String(UNPAUSE_THRESHOLD))
+            expect(await controllerContract.whitelistThreshold()).to.be.deep.equal(String(WHITELIST_THRESHOLD))
+            expect(await controllerContract.dewhitelistThreshold()).to.be.deep.equal(String(DEWHITELIST_THRESHOLD))
+            expect(await controllerContract.snapshotTokenEvery()).to.be.deep.equal(String(SNAPSHOT_TOKEN_EVERY))
+            expect(await controllerContract.lockPeriod()).to.be.deep.equal(String(CONTROLLER_LOCK_PERIOD))
+            expect(await controllerContract.vetoHolder()).to.be.deep.equal(String(deployer.address))
 
-            // @ts-ignore
-            await controllerContract.deploy({ params : [VOTE_TOKEN, PAUSE_THRESHOLD, UNPAUSE_THRESHOLD, WHITELIST_THRESHOLD, DEWHITELIST_THRESHOLD, String(SNAPSHOT_TOKEN_EVERY), String(CONTROLLER_LOCK_PERIOD), deployer.address ]
-                , responseLatency: 1})
-
-            // @ts-ignore
-            await contract.deploy({ params: [ [LOAN_CCY_TOKEN, COLL_CCY_TOKEN], DECIMALS, LOAN_TENOR, // @ts-ignore
-                MAX_LOAN_PER_COLL, [R1, R2], [LIQUIDITY_BND_1, LIQUIDITY_BND_2], MIN_LOAN, // @ts-ignore
-                MONE.mul(27).div(10000).toString(), MIN_LIQUIDITY, controllerContract.address, REWARD_COEFFICIENT
-            ], responseLatency: 1})
+            contract = await contractBlueprint.deploy(
+                [LOAN_CCY_TOKEN, COLL_CCY_TOKEN],
+                DECIMALS,
+                LOAN_TENOR,
+                MAX_LOAN_PER_COLL,
+                [R1, R2],
+                [LIQUIDITY_BND_1, LIQUIDITY_BND_2],
+                MIN_LOAN,
+                MONE.mul(27).div(10000).toString(),
+                MIN_LIQUIDITY,
+                controllerContract.address,
+                REWARD_COEFFICIENT
+            )
 
             await setTime(0)
             await setTime(0, controllerContract)
@@ -6588,7 +6530,7 @@ describe('test BasePool', function () {
         })
     })
 
-    describe('reward requests', function () {
+    /*describe('reward requests', function () {
         beforeEach(async function () {
             // compile
             const compiledContracts = await compile('contracts/Controller_parsed.solpp')
@@ -7807,6 +7749,5 @@ describe('test BasePool', function () {
                 ).to.be.eventually.rejectedWith('revert')
             })
         })
-    })
+    })*/
 });
-*/
