@@ -3811,11 +3811,11 @@ describe('test BasePool', function () {
                     const [alice] = await newUsers([])
 
                     await expect(
-                        contract.call('pause', [], { caller : alice })
+                        contract.connect(alice).pause()
                     ).to.be.eventually.rejectedWith('revert')
 
                     await expect(
-                        contract.call('unpause', [], { caller : alice })
+                        contract.connnect(alice).unpause()
                     ).to.be.eventually.rejectedWith('revert')
                 })
             })
