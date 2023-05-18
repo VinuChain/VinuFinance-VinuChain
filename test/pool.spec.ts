@@ -27,7 +27,7 @@ let controllerContract : any;
 let contract: any;
 let mnemonicCounter = 1
 
-const ZERO_ADDRESS = 'vite_0000000000000000000000000000000000000000a4f3a0cb58'
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
 
 const MONE = BigNumber.from('1000000000000000000') //10**18
@@ -138,6 +138,10 @@ const checkQuery = async (methodName : string, params : Array<any>, expected : A
     if (parsedExpected.length == 1) {
         parsedExpected = parsedExpected[0]
     }
+
+    let actual = await referenceContract[methodName](...params)
+
+    actual = serialize(actual)
 
     expect(await referenceContract[methodName](...params)).to.be.deep.equal(parsedExpected)
 }
@@ -1387,89 +1391,6 @@ describe('test BasePool', function () {
                     bob.address
                 )
                 ).to.be.eventually.rejectedWith('revert')
-            })
-            it('fails to repay a loan with the incorrect amount', async function () {
-                const [alice, bob] = await newUsers(
-                    [ [LOAN_CCY_TOKEN, 8000] ],
-                    [ [LOAN_CCY_TOKEN, 10000], [COLL_CCY_TOKEN, 8000] ])
-
-                const liquidity = 8000
-                const collateralPledge = 500
-                const shares = 1000 * liquidity / MIN_LIQUIDITY
-                // Precomputed
-                const loanAmount = 428
-                const repaymentAmount = 582
-
-                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
-                
-                // The contract doesn't allow atomic addLiquidity + borrow
-                await setTime(1)
-
-                await contract.connect(bob).borrow(bob.address, // onBehalfOf
-                        String(collateralPledge), 200, // minLoanLimit
-                        10000, // maxRepayLimit
-                        150, // deadline
-                        0 // referralCode
-                    )
-
-                await checkQuery('getPoolInfo', [],
-                    [
-                        LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
-                        liquidity - loanAmount, shares, REWARD_COEFFICIENT, 2
-                    ]
-                )
-                expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(10000 + loanAmount))
-
-                // The contract doesn't allow atomic borrow + repay
-                await setTime(2)
-
-                await expect(
-                    contract.connect(bob).repay(
-                    1,
-                    bob.address
-                )
-                ).to.be.eventually.rejectedWith('revert')
-            })
-            it('fails to repay a loan with the incorrect token', async function () {
-                const [alice, bob] = await newUsers(
-                    [ [LOAN_CCY_TOKEN, 8000] ],
-                    [ [LOAN_CCY_TOKEN, 10000], [COLL_CCY_TOKEN, 8000] ])
-
-                const liquidity = 8000
-                const collateralPledge = 500
-                const shares = 1000 * liquidity / MIN_LIQUIDITY
-                // Precomputed
-                const loanAmount = 428
-                const repaymentAmount = 582
-
-                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
-                
-                // The contract doesn't allow atomic addLiquidity + borrow
-                await setTime(1)
-
-                await contract.connect(bob).borrow(bob.address, // onBehalfOf
-                        String(collateralPledge), 200, // minLoanLimit
-                        10000, // maxRepayLimit
-                        150, // deadline
-                        0 // referralCode
-                    )
-
-                await checkQuery('getPoolInfo', [],
-                    [
-                        LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
-                        liquidity - loanAmount, shares, REWARD_COEFFICIENT, 2
-                    ]
-                )
-                expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(10000 + loanAmount))
-
-                // The contract doesn't allow atomic borrow + repay
-                await setTime(2)
-
-                await expect(
-                    contract.connect(bob).repay(
-                    1,
-                    bob.address
-                )).to.be.eventually.rejectedWith('revert')
             })
             it('fails to borrow and repay atomically', async function () {
                 const [alice, bob] = await newUsers(
@@ -3292,12 +3213,6 @@ describe('test BasePool', function () {
                         ['200', '0', '0']
                     )
                 })
-
-                it('fails to deposit with zero value', async function () {
-                    const [alice] = await newUsers([ [VOTE_TOKEN, 1000] ])
-
-                    await expect(controllerContract.connect(alice).depositVoteToken(String(0))).to.be.eventually.rejectedWith('revert')
-                })
             })
 
             describe('withdrawVoteToken', function () {
@@ -3394,7 +3309,7 @@ describe('test BasePool', function () {
                         deadline : 150
                     }], controllerContract)
 
-                    expect(await controllerContract.getProposal(0)).to.be.deep.equal([contract.address, String(Actions.Pause), '0', ZERO_ADDRESS, false, '150'])
+                    await checkQuery('getProposal', [0], [contract.address, String(Actions.Pause), '0', ZERO_ADDRESS, false, '150'], controllerContract)
                     expect(await controllerContract.numProposals()).to.be.deep.equal('1')
                 })
 
@@ -3439,7 +3354,7 @@ describe('test BasePool', function () {
                     }], controllerContract)
 
                     // Proposal received 100 votes and wasn't executed
-                    expect(await controllerContract.getProposal(0)).to.be.deep.equal([contract.address, String(Actions.Pause), '100', ZERO_ADDRESS, false, '150'])
+                    await checkQuery('getProposal', [0], [contract.address, String(Actions.Pause), '100', ZERO_ADDRESS, false, '150'], controllerContract)
                 })
 
                 it('votes on multiple proposals', async function () {
@@ -3474,8 +3389,8 @@ describe('test BasePool', function () {
                     }], controllerContract)
 
                     // Proposals received 100 votes and weren't executed
-                    expect(await controllerContract.getProposal(0)).to.be.deep.equal([contract.address, String(Actions.Pause), '100', ZERO_ADDRESS, false, '150'])
-                    expect(await controllerContract.getProposal(1)).to.be.deep.equal([contract.address, String(Actions.Pause), '100', ZERO_ADDRESS, false, '150'])
+                    await checkQuery('getProposal', [0], [contract.address, String(Actions.Pause), '100', ZERO_ADDRESS, false, '150'], controllerContract)
+                    await checkQuery('getProposal', [1], [contract.address, String(Actions.Pause), '100', ZERO_ADDRESS, false, '150'], controllerContract)
                 })
 
                 it('removes a vote on a proposal', async function () {
@@ -3501,7 +3416,7 @@ describe('test BasePool', function () {
                     }], controllerContract)
 
                     // Proposal received 0 votes and wasn't executed
-                    expect(await controllerContract.getProposal(0)).to.be.deep.equal([contract.address, String(Actions.Pause), '0', ZERO_ADDRESS, false, '150'])
+                    await checkQuery('getProposal', [0], [contract.address, String(Actions.Pause), '0', ZERO_ADDRESS, false, '150'], controllerContract)
                 })
 
                 it('votes, removes and re-votes', async function () {
@@ -3562,7 +3477,7 @@ describe('test BasePool', function () {
                     expect(await contract.paused()).to.be.deep.equal(true)
 
                     // Proposal received 900 votes and was executed
-                    expect(await controllerContract.getProposal(0)).to.be.deep.equal([contract.address, String(Actions.Pause), '900', ZERO_ADDRESS, true, '150'])
+                    await checkQuery('getProposal', [0], [contract.address, String(Actions.Pause), '900', ZERO_ADDRESS, true, '150'], controllerContract)
                 })
 
                 it('pauses and unpauses', async function () {
@@ -3631,7 +3546,7 @@ describe('test BasePool', function () {
                     expect(await controllerContract.numVotings(bob.address)).to.be.deep.equal('0')
 
                     // Proposal has 0 votes and was executed
-                    expect(await controllerContract.getProposal(0)).to.be.deep.equal([contract.address, String(Actions.Pause), '0', ZERO_ADDRESS, true, '150'])                    
+                    await checkQuery('getProposal', [0], [contract.address, String(Actions.Pause), '0', ZERO_ADDRESS, true, '150'], controllerContract)                    
                 })
 
                 it('withdraws after removing all votes', async function () {
@@ -4807,11 +4722,7 @@ describe('test BasePool', function () {
                     const rewardCoefficient = MONE.mul(135).div(100).toString() // 1.35
                     const reward = 2252248 // Precomputed
 
-                    await controllerContract.call(
-                        'requestTokenDistribution',
-                        [dan.address, liquidity, duration, rewardCoefficient, 0],
-                        { caller : charlie }
-                    )
+                    await controllerContract.connect(charlie).requestTokenDistribution(dan.address, liquidity, duration, rewardCoefficient)
 
                     await checkQuery('rewardSupply', [], [String(10000000 - reward)], controllerContract)
                     
@@ -4861,11 +4772,7 @@ describe('test BasePool', function () {
                     const rewardCoefficient = MONE.mul(135).div(100).toString() // 1.35
                     const reward = 2252248 // Precomputed
 
-                    await controllerContract.call(
-                        'requestTokenDistribution',
-                        [dan.address, liquidity, duration, rewardCoefficient, 0],
-                        { caller : charlie }
-                    )
+                    await controllerContract.connect(charlie).requestTokenDistribution(dan.address, liquidity, duration, rewardCoefficient)
 
                     await checkQuery('rewardSupply', [], [String(10000000 - reward)], controllerContract)
                     
@@ -4961,7 +4868,7 @@ describe('test BasePool', function () {
                     await controllerContract.connect(alice).createProposal(contract.address, Actions.Whitelist, 150)
 
                     await controllerContract.connect(deployer).setVetoHolderApproval(0, true)
-                    expect(await controllerContract.getProposal(0)).to.be.deep.equal([contract.address, String(Actions.Whitelist), '0', deployer.address, false, '150'])
+                    await checkQuery('getProposal', [0], [contract.address, String(Actions.Whitelist), '0', deployer.address, false, '150'], controllerContract)
                     
                     await checkEvents([
                         {
@@ -4980,7 +4887,7 @@ describe('test BasePool', function () {
                     await controllerContract.connect(alice).createProposal(contract.address, Actions.Whitelist, 150)
 
                     await controllerContract.connect(deployer).setVetoHolderApproval(0, true)
-                    expect(await controllerContract.getProposal(0)).to.be.deep.equal([contract.address, String(Actions.Whitelist), '0', deployer.address, false, '150'])
+                    await checkQuery('getProposal', [0], [contract.address, String(Actions.Whitelist), '0', deployer.address, false, '150'], controllerContract)
 
                     await checkEvents([
                         {
@@ -5268,11 +5175,7 @@ describe('test BasePool', function () {
                     const rewardCoefficient = MONE.mul(135).div(100).toString() // 1.35
                     const reward = 2252248 // Precomputed
 
-                    await controllerContract.call(
-                        'requestTokenDistribution',
-                        [dan.address, liquidity, duration, rewardCoefficient, 0],
-                        { caller : charlie }
-                    )
+                    await controllerContract.connect(charlie).requestTokenDistribution(dan.address, liquidity, duration, rewardCoefficient)
 
                     await checkQuery('rewardSupply', [], [String(10000000 - reward)], controllerContract)
                     
@@ -5317,18 +5220,11 @@ describe('test BasePool', function () {
                     const duration = 3691
                     const rewardCoefficient = MONE.mul(135).div(100).toString() // 1.35
 
-                    await controllerContract.call(
-                        'requestTokenDistribution',
-                        [dan.address, liquidity, duration, rewardCoefficient, 0],
-                        { caller : charlie }
-                    )
-                    expect(await controllerContract.receivedReward(charlie.address, 0)).to.be.deep.equal(true)
+                    await controllerContract.connect(charlie).requestTokenDistribution(dan.address, liquidity, duration, rewardCoefficient)
 
                     await expect(
-                        controllerContract.call(
-                            'requestTokenDistribution',
-                            [dan.address, liquidity, duration, rewardCoefficient, 0],
-                            { caller : charlie }
+                        controllerContract.connect(charlie).requestTokenDistribution(
+                            dan.address, liquidity, duration, rewardCoefficient
                         )
                     ).to.be.eventually.rejectedWith('revert')
                 })
@@ -5343,11 +5239,11 @@ describe('test BasePool', function () {
                     const rewardCoefficient = MONE.mul(135).div(100).toString() // 1.35
                     const reward = 2252248 // Precomputed
 
-                    await expect(controllerContract.call(
-                        'requestTokenDistribution',
-                        [dan.address, liquidity, duration, rewardCoefficient, 0],
-                        { caller : charlie }
-                    )).to.be.eventually.rejectedWith('revert')
+                    await expect(
+                        controllerContract.connect(charlie).requestTokenDistribution(
+                            dan.address, liquidity, duration, rewardCoefficient
+                        )
+                    ).to.be.eventually.rejectedWith('revert')
                 })
 
                 it('fails to request token distribution when there are not enough tokens', async function () {
@@ -5383,10 +5279,9 @@ describe('test BasePool', function () {
                     const rewardCoefficient = MONE.mul(135).div(100).toString() // 1.35
 
                     await expect(
-                        controllerContract.call(
-                            'requestTokenDistribution',
-                            [dan.address, liquidity, duration, rewardCoefficient, 0],
-                            { caller : charlie })
+                        controllerContract.connect(charlie).requestTokenDistribution(
+                            dan.address, liquidity, duration, rewardCoefficient
+                        )
                     ).to.be.eventually.rejectedWith('revert')
                 })
             })
@@ -6376,7 +6271,6 @@ describe('test BasePool', function () {
     
                 await checkQuery('lastRewardTimestamp', [alice.address], [time1])
                 await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity1])
-                await checkQuery('receivedReward', [contract.address, 0], [false], controllerContract)
                 await checkQuery('rewardBalance', [alice.address], [0], controllerContract)
     
                 await setTime(time2)
@@ -6389,21 +6283,18 @@ describe('test BasePool', function () {
                 await checkQuery('lastRewardTimestamp', [alice.address], [time2])
                 await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity2])
                 // No reward is disbursed
-                await checkQuery('receivedReward', [contract.address, 0], [false], controllerContract)
                 await checkQuery('rewardBalance', [alice.address], [0], controllerContract)
 
 
                 // Re-enable the Controller
                 await controllerContract.connect(alice).setDisabled(false)
 
-                await checkQuery('receivedReward', [contract.address, 0], [false], controllerContract)
                 await checkQuery('rewardBalance', [alice.address], [0], controllerContract)
 
 
                 // Re-send the request
                 await contract.connect(alice).resendRewardRequest(0)
-    
-                await checkQuery('receivedReward', [contract.address, 0], [true], controllerContract)
+
                 await checkQuery('rewardBalance', [alice.address], [reward2], controllerContract)
             })
 
@@ -6429,7 +6320,6 @@ describe('test BasePool', function () {
     
                 await checkQuery('lastRewardTimestamp', [alice.address], [time1])
                 await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity1])
-                await checkQuery('receivedReward', [contract.address, 0], [false], controllerContract)
                 await checkQuery('rewardBalance', [alice.address], [0], controllerContract)
     
                 await setTime(time2)
@@ -6442,21 +6332,18 @@ describe('test BasePool', function () {
                 await checkQuery('lastRewardTimestamp', [alice.address], [time2])
                 await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity2])
                 // No reward is disbursed
-                await checkQuery('receivedReward', [contract.address, 0], [false], controllerContract)
                 await checkQuery('rewardBalance', [alice.address], [0], controllerContract)
 
 
                 // Re-enable the Controller
                 await controllerContract.connect(alice).setDisabled(false)
 
-                await checkQuery('receivedReward', [contract.address, 0], [false], controllerContract)
                 await checkQuery('rewardBalance', [alice.address], [0], controllerContract)
 
 
                 // Re-send the request
                 await contract.connect(bob).resendRewardRequest(0)
-    
-                await checkQuery('receivedReward', [contract.address, 0], [true], controllerContract)
+
                 await checkQuery('rewardBalance', [alice.address], [reward2], controllerContract)
             })
 
@@ -6487,7 +6374,6 @@ describe('test BasePool', function () {
                 await checkQuery('lastRewardTimestamp', [alice.address], [time2])
                 await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity2])
                 // Since the contract is not disabled, the reward is disbursed
-                await checkQuery('receivedReward', [contract.address, 0], [true], controllerContract)
                 await checkQuery('rewardBalance', [alice.address], [reward2], controllerContract)
 
 
@@ -6498,7 +6384,6 @@ describe('test BasePool', function () {
                 // Nothing happens
                 await checkQuery('lastRewardTimestamp', [alice.address], [time2])
                 await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity2])
-                await checkQuery('receivedReward', [contract.address, 0], [true], controllerContract)
                 await checkQuery('rewardBalance', [alice.address], [reward2], controllerContract)
             })
 
@@ -6520,7 +6405,6 @@ describe('test BasePool', function () {
     
                 await checkQuery('lastRewardTimestamp', [alice.address], [time1])
                 await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity1])
-                await checkQuery('receivedReward', [contract.address, 0], [false], controllerContract)
                 await checkQuery('rewardBalance', [alice.address], [0], controllerContract)
 
 
@@ -6553,7 +6437,6 @@ describe('test BasePool', function () {
                 await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity1])
                 //await controllerContract.waitForHeight(await contract.height())
                 //await controllerContract.waitForHeight((await contract.height()) + 1)
-                await checkQuery('receivedReward', [contract.address, 0], [false], controllerContract)
                 await checkQuery('rewardBalance', [alice.address], [0], controllerContract)
     
                 await setTime(time2)
@@ -6566,14 +6449,12 @@ describe('test BasePool', function () {
                 await checkQuery('lastRewardTimestamp', [alice.address], [time2])
                 await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity2])
                 // No reward is disbursed
-                await checkQuery('receivedReward', [contract.address, 0], [false], controllerContract)
                 await checkQuery('rewardBalance', [alice.address], [0], controllerContract)
 
 
                 // Re-enable the Controller
                 await controllerContract.connect(alice).setDisabled(false)
 
-                await checkQuery('receivedReward', [contract.address, 0], [false], controllerContract)
                 await checkQuery('rewardBalance', [alice.address], [0], controllerContract)
 
 
