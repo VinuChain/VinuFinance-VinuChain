@@ -1078,10 +1078,10 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
 
-                await contract.call('repay', [
+                await contract.connect(bob).repay(
                     1,
                     bob.address
-                ], { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount) })
+                )
 
                 await checkEvents([
                     {
@@ -1137,10 +1137,10 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
 
-                await contract.call('repay', [
+                await contract.connect(charlie).repay(
                     1,
                     bob.address
-                ], { caller : charlie, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount) })
+                )
 
                 await checkEvents([
                     {
@@ -1197,10 +1197,10 @@ describe('test BasePool', function () {
                 await setTime(2)
 
                 await expect(
-                    contract.call('repay', [
+                    contract.connect(charlie).repay(
                         1,
                         bob.address
-                    ], { caller : charlie, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount) })
+                    )
                 ).to.eventually.be.rejectedWith('revert')
             })
             
@@ -1240,10 +1240,10 @@ describe('test BasePool', function () {
                 await setTime(2)
 
                 await expect(
-                    contract.call('repay', [
+                    contract.connect(bob).repay(
                         1,
                         bob.address
-                    ], { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount + 1) })
+                    )
                 ).to.be.eventually.rejectedWith('revert')
             })
 
@@ -1284,10 +1284,10 @@ describe('test BasePool', function () {
                 await setTime(LOAN_TENOR + 2)
 
                 await expect(
-                    contract.call('repay', [
+                    contract.connect(bob).repay(
                         1,
                         bob.address
-                    ], { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount) })
+                    )
                 ).to.eventually.be.rejectedWith('revert')
             })
             it('fails to repay an invalid loan', async function () {
@@ -1326,10 +1326,10 @@ describe('test BasePool', function () {
                 await setTime(2)
 
                 await expect(
-                    contract.call('repay', [
+                    contract.connect(bob).repay(
                     2, // Instead of 1
                     bob.address
-                ], { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount) })
+                )
                 ).to.be.eventually.rejectedWith('revert')
             })
             it('fails to repay an already repaid loan', async function () {
@@ -1367,16 +1367,16 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
 
-                await contract.call('repay', [
+                await contract.connect(bob).repay(
                     1,
                     bob.address
-                ], { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount) })
+                )
 
                 await expect(
-                    contract.call('repay', [
+                    contract.connect(bob).repay(
                     1,
                     bob.address
-                ], { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount) })
+                )
                 ).to.be.eventually.rejectedWith('revert')
             })
             it('fails to repay a loan with the incorrect amount', async function () {
@@ -1415,10 +1415,10 @@ describe('test BasePool', function () {
                 await setTime(2)
 
                 await expect(
-                    contract.call('repay', [
+                    contract.connect(bob).repay(
                     1,
                     bob.address
-                ], { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount - 1) })
+                )
                 ).to.be.eventually.rejectedWith('revert')
             })
             it('fails to repay a loan with the incorrect token', async function () {
@@ -1457,7 +1457,7 @@ describe('test BasePool', function () {
                 await setTime(2)
 
                 await expect(
-                    contract.call('repay', [
+                    contract.connect(bob).repay(
                     1,
                     bob.address
                 ], { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(repaymentAmount) })
@@ -1499,7 +1499,7 @@ describe('test BasePool', function () {
                     contract.call('repay', [
                         1,
                         bob.address
-                    ], { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount) })
+                    )
                 ).to.eventually.be.rejectedWith('revert')
             })
         })
@@ -1556,10 +1556,10 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
 
-                await contract.call('repay', [
+                await contract.connect(bob).repay(
                     1,
                     bob.address
-                ], { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount) })
+                )
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -1653,10 +1653,10 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
 
-                await contract.call('repay', [
+                await contract.connect(bob).repay(
                     1,
                     bob.address
-                ], { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount) })
+                )
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -1790,10 +1790,10 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
 
-                await contract.call('repay', [
+                await contract.connect(bob).repay(
                     1,
                     bob.address
-                ], { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount) })
+                )
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -1810,10 +1810,10 @@ describe('test BasePool', function () {
                 
                 console.log(await contract.query('loanIdxToLoanInfo', [2]))
 
-                await contract.call('repay', [
+                await contract.connect(bob).repay(
                     2,
                     bob.address
-                ], { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount2) })
+                )
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -1935,10 +1935,10 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
 
-                await contract.call('repay', [
+                await contract.connect(charlie).repay(
                     1,
                     charlie.address
-                ], { caller : charlie, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount) })
+                )
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -2095,10 +2095,10 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
 
-                await contract.call('repay', [
+                await contract.connect(charlie).repay(
                     1,
                     charlie.address
-                ], { caller : charlie, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount) })
+                )
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -2271,10 +2271,10 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
 
-                await contract.call('repay', [
+                await contract.connect(charlie).repay(
                     1,
                     charlie.address
-                ], { caller : charlie, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount) })
+                )
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -2544,10 +2544,10 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
 
-                await contract.call('repay', [
+                await contract.connect(charlie).repay(
                     1,
                     charlie.address
-                ], { caller : charlie, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount) })
+                )
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -2794,16 +2794,16 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
 
-                await contract.call('repay', [
+                await contract.connect(charlie).repay(
                     1,
                     charlie.address
-                ], { caller : charlie, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount) })
+                )
 
 
-                await contract.call('repay', [
+                await contract.connect(charlie).repay(
                     2,
                     charlie.address
-                ], { caller : charlie, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount2) })
+                )
 
                 await contract.connect(alice).claim(
                         alice.address,
@@ -2921,17 +2921,17 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
 
-                await contract.call('repay', [
+                await contract.connect(charlie).repay(
                     1,
                     charlie.address
-                ], { caller : charlie, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount) })
+                )
 
                 console.log('Done first')
 
-                await contract.call('repay', [
+                await contract.connect(charlie).repay(
                     2,
                     charlie.address
-                ], { caller : charlie, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount2) })
+                )
 
                 await contract.connect(alice).claim(
                         alice.address,
@@ -3091,10 +3091,10 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
 
-                await contract.call('repay', [
+                await contract.connect(bob).repay(
                     1,
                     bob.address
-                ], { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount) })
+                )
 
                 await contract.connect(charlie).claim(
                         alice.address,
@@ -3141,10 +3141,10 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
 
-                await contract.call('repay', [
+                await contract.connect(bob).repay(
                     1,
                     bob.address
-                ], { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount) })
+                )
 
                 await expect(contract.connect(charlie).claim(
                         alice.address,
@@ -3208,10 +3208,10 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
 
-                await contract.call('repay', [
+                await contract.connect(bob).repay(
                     1,
                     bob.address
-                ], { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount) })
+                )
 
                 await expect(contract.connect(alice).claim(
                         alice.address,
@@ -3246,10 +3246,10 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
 
-                await contract.call('repay', [
+                await contract.connect(bob).repay(
                     1,
                     bob.address
-                ], { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount) })
+                )
 
                 await contract.connect(alice).claim(
                         alice.address,
@@ -5848,10 +5848,10 @@ describe('test BasePool', function () {
             // The contract doesn't allow atomic borrow + repay
             await setTime(loanTime + 1)
 
-            await contract.call('repay', [
+            await contract.connect(charlie).repay(
                 1,
                 charlie.address
-            ], { caller : charlie, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount) })
+            )
 
 
             // Nothing changed
@@ -5960,10 +5960,10 @@ describe('test BasePool', function () {
             // The contract doesn't allow atomic borrow + repay
             await setTime(loanTime + 1)
 
-            await contract.call('repay', [
+            await contract.connect(charlie).repay(
                 1,
                 charlie.address
-            ], { caller : charlie, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount) })
+            )
 
 
             // Nothing changed
@@ -6236,10 +6236,10 @@ describe('test BasePool', function () {
             // The contract doesn't allow atomic borrow + repay
             await setTime(32)
 
-            await contract.call('repay', [
+            await contract.connect(charlie).repay(
                 1,
                 charlie.address
-            ], { caller : charlie, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount) })
+            )
 
             await checkTracked()
 
