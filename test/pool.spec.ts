@@ -1675,14 +1675,12 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await contract.call('claim',
-                    [
+                await contract.connect(alice).claim(
                         alice.address,
                         [1],
                         0, // Don't reinvest
                         150
-                    ], { caller : alice }
-                )
+                    )
 
                 // The liquidity and shares don't change because the user didn't reinvest
                 await checkQuery('getPoolInfo', [],
@@ -1778,14 +1776,12 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await contract.call('claim',
-                    [
+                await contract.connect(alice).claim(
                         alice.address,
                         [1],
                         1, // Reinvest
                         150
-                    ], { caller : alice }
-                )
+                    )
 
                 // The liquidity and shares don't change because the user didn't reinvest
                 await checkQuery('getPoolInfo', [],
@@ -1945,14 +1941,12 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await contract.call('claim',
-                    [
+                await contract.connect(alice).claim(
                         alice.address,
                         [1, 2],
                         1, // Reinvest
                         150
-                    ], { caller : alice }
-                )
+                    )
 
                 // The liquidity and shares don't change because the user didn't reinvest
                 await checkQuery('getPoolInfo', [],
@@ -2081,14 +2075,12 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await contract.call('claim',
-                    [
+                await contract.connect(alice).claim(
                         alice.address,
                         [1],
                         0, // Don't reinvest
                         150
-                    ], { caller : alice }
-                )
+                    )
 
                 // The liquidity and shares don't change because the user didn't reinvest
                 await checkQuery('getPoolInfo', [],
@@ -2116,14 +2108,12 @@ describe('test BasePool', function () {
                 }])
                 expect(await alice.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(repaymentAlice))
 
-                await contract.call('claim',
-                    [
+                await contract.connect(bob).claim(
                         bob.address,
                         [1],
                         0, // Don't reinvest
                         150
-                    ], { caller : bob }
-                )
+                    )
 
                 // The liquidity and shares don't change because the user didn't reinvest
                 await checkQuery('getPoolInfo', [],
@@ -2249,14 +2239,12 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await contract.call('claim',
-                    [
+                await contract.connect(alice).claim(
                         alice.address,
                         [1],
                         1, // Reinvest
                         150
-                    ], { caller : alice }
-                )
+                    )
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -2292,14 +2280,12 @@ describe('test BasePool', function () {
                 ])
                 expect(await alice.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(0))
 
-                await contract.call('claim',
-                    [
+                await contract.connect(bob).claim(
                         bob.address,
                         [1],
                         1, // Reinvest
                         150
-                    ], { caller : bob }
-                )
+                    )
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -2433,14 +2419,12 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await contract.call('claim',
-                    [
+                await contract.connect(alice).claim(
                         alice.address,
                         [1],
                         0, // Don't reinvest
                         150
-                    ], { caller : alice }
-                )
+                    )
 
                 // The liquidity and shares don't change because the user didn't reinvest
                 await checkQuery('getPoolInfo', [],
@@ -2461,14 +2445,12 @@ describe('test BasePool', function () {
                 )
                 expect(await alice.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(repaymentAlice))
 
-                await contract.call('claim',
-                    [
+                await contract.connect(bob).claim(
                         bob.address,
                         [1],
                         1, // Reinvest
                         150
-                    ], { caller : bob }
-                )
+                    )
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -2722,14 +2704,12 @@ describe('test BasePool', function () {
 
                 const sharesBeforeClaimingAlice = currentAliceShares
 
-                await contract.call('claim',
-                    [
+                await contract.connect(alice).claim(
                         alice.address,
                         [1],
                         1, // Reinvest
                         150
-                    ], { caller : alice }
-                )
+                    )
 
                 addLiquidity(Math.floor(repaymentAmount * sharesBeforeLoanAlice / sharesBeforeLoan), 'alice')
 
@@ -2811,14 +2791,12 @@ describe('test BasePool', function () {
 
                 const sharesBeforeClaimingBob = currentBobShares
 
-                await contract.call('claim',
-                    [
+                await contract.connect(bob).claim(
                         bob.address,
                         [1],
                         1, // Reinvest
                         150
-                    ], { caller : bob }
-                )
+                    )
 
                 addLiquidity(Math.floor(repaymentAmount * sharesBeforeLoanBob / sharesBeforeLoan), 'bob')
 
@@ -2965,14 +2943,12 @@ describe('test BasePool', function () {
                     charlie.address
                 ], { caller : charlie, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount2) })
 
-                await contract.call('claim',
-                    [
+                await contract.connect(alice).claim(
                         alice.address,
                         [1, 2],
                         0, // Don't reinvest
                         150
-                    ], { caller : alice }
-                )
+                    )
 
                 await checkEvents([
                     {
@@ -3000,14 +2976,12 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await contract.call('claim',
-                    [
+                await contract.connect(bob).claim(
                         bob.address,
                         [1, 2],
                         0, // Don't reinvest
                         150
-                    ], { caller : bob }
-                )
+                    )
 
                 await checkEvents([
                     {
@@ -3105,14 +3079,12 @@ describe('test BasePool', function () {
                     charlie.address
                 ], { caller : charlie, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount2) })
 
-                await contract.call('claim',
-                    [
+                await contract.connect(alice).claim(
                         alice.address,
                         [1, 2],
                         1, // Reinvest
                         150
-                    ], { caller : alice }
-                )
+                    )
 
                 await checkEvents([
                     {
@@ -3147,14 +3119,12 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await contract.call('claim',
-                    [
+                await contract.connect(bob).claim(
                         bob.address,
                         [1, 2],
                         1, // Reinvest
                         150
-                    ], { caller : bob }
-                )
+                    )
 
                 await checkEvents([
                     {
@@ -3219,14 +3189,12 @@ describe('test BasePool', function () {
                 // Cause the loan to expire
                 await setTime(LOAN_TENOR + 2)
 
-                await contract.call('claim',
-                    [
+                await contract.connect(alice).claim(
                         alice.address,
                         [1],
                         0,
                         150
-                    ], { caller : alice }
-                )
+                    )
 
                 await checkEvents([{
                     lp : alice.address,
@@ -3282,14 +3250,12 @@ describe('test BasePool', function () {
                     bob.address
                 ], { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount) })
 
-                await contract.call('claim',
-                    [
+                await contract.connect(charlie).claim(
                         alice.address,
                         [1],
                         0,
                         150
-                    ], { caller : charlie }
-                )
+                    )
 
                 await checkEvents([{
                     lp : alice.address,
@@ -3338,14 +3304,12 @@ describe('test BasePool', function () {
                     bob.address
                 ], { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount) })
 
-                await expect(contract.call('claim',
-                    [
+                await expect(contract.connect(charlie).claim(
                         alice.address,
                         [1],
                         0,
                         150
-                    ], { caller : charlie }
-                )).to.be.eventually.rejectedWith('revert')
+                    )).to.be.eventually.rejectedWith('revert')
             })
 
             it('fails to claim the collateral of an active loan', async function () {
@@ -3373,14 +3337,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
 
-                await expect(contract.call('claim',
-                    [
+                await expect(contract.connect(alice).claim(
                         alice.address,
                         [1],
                         0,
                         150
-                    ], { caller : alice }
-                )).to.be.eventually.rejectedWith('revert')
+                    )).to.be.eventually.rejectedWith('revert')
             })
 
             it('fails to claim the collateral of an invalid loan', async function () {
@@ -3417,14 +3379,12 @@ describe('test BasePool', function () {
                     bob.address
                 ], { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount) })
 
-                await expect(contract.call('claim',
-                    [
+                await expect(contract.connect(alice).claim(
                         alice.address,
                         [2],
                         0,
                         150
-                    ], { caller : alice }
-                )).to.be.eventually.rejectedWith('revert')
+                    )).to.be.eventually.rejectedWith('revert')
             })
 
             it('fails to claim an already claimed loan', async function () {
@@ -3461,23 +3421,19 @@ describe('test BasePool', function () {
                     bob.address
                 ], { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAmount) })
 
-                await contract.call('claim',
-                    [
+                await contract.connect(alice).claim(
                         alice.address,
                         [1],
                         0,
                         150
-                    ], { caller : alice }
-                )
+                    )
 
-                await expect(contract.call('claim',
-                    [
+                await expect(contract.connect(alice).claim(
                         alice.address,
                         [1],
                         0,
                         150
-                    ], { caller : alice }
-                )).to.be.eventually.rejectedWith('revert')
+                    )).to.be.eventually.rejectedWith('revert')
             })
         })
 
@@ -4572,11 +4528,11 @@ describe('test BasePool', function () {
                     await checkQuery('getTokenSnapshot', [LOAN_CCY_TOKEN, 1], [1000, 3000, 0, 100, 0], controllerContract)
 
                     // Bob claims
-                    await controllerContract.call('claimMultiple', [
+                    await controllerContract.connect(bob).claimMultiple(
                         [LOAN_CCY_TOKEN, LOAN_CCY_TOKEN],
                         [0, 1],
                         [0, 1]
-                    ], { caller : bob })
+                    )
 
                     await checkEvents([
                         {
@@ -4598,11 +4554,11 @@ describe('test BasePool', function () {
                     ], controllerContract)
 
                     // Charlie claims
-                    await controllerContract.call('claimMultiple', [
+                    await controllerContract.connect(charlie).claimMultiple(
                         [LOAN_CCY_TOKEN, LOAN_CCY_TOKEN],
                         [0, 1],
                         [0, 1]
-                    ], { caller : charlie })
+                    )
 
                     await checkEvents([
                         {
@@ -4679,11 +4635,11 @@ describe('test BasePool', function () {
                     await checkQuery('getTokenSnapshot', [LOAN_CCY_TOKEN, 1], [1000, 3000, 0, 100, 0], controllerContract)
 
                     // Bob claims the first
-                    await controllerContract.call('claimMultiple', [
+                    await controllerContract.connect(bob).claimMultiple(
                         [LOAN_CCY_TOKEN],
                         [0],
                         [0]
-                    ], { caller : bob })
+                    )
                     
 
                     await checkEvents([
@@ -4698,11 +4654,11 @@ describe('test BasePool', function () {
                     ], controllerContract)
 
                     // Charlie claims the first
-                    await controllerContract.call('claimMultiple', [
+                    await controllerContract.connect(charlie).claimMultiple(
                         [LOAN_CCY_TOKEN],
                         [0],
                         [0]
-                    ], { caller : charlie })
+                    )
 
                     await checkEvents([
                         {
@@ -4716,11 +4672,11 @@ describe('test BasePool', function () {
                     ], controllerContract)
 
                     // Bob claims the second
-                    await controllerContract.call('claimMultiple', [
+                    await controllerContract.connect(bob).claimMultiple(
                         [LOAN_CCY_TOKEN],
                         [1],
                         [1]
-                    ], { caller : bob })
+                    )
                     
 
                     await checkEvents([
@@ -4735,11 +4691,11 @@ describe('test BasePool', function () {
                     ], controllerContract)
 
                     // Charlie claims the second
-                    await controllerContract.call('claimMultiple', [
+                    await controllerContract.connect(charlie).claimMultiple(
                         [LOAN_CCY_TOKEN],
                         [1],
                         [1]
-                    ], { caller : charlie })
+                    )
 
                     await checkEvents([
                         {
@@ -4809,29 +4765,29 @@ describe('test BasePool', function () {
 
                     // Too many token ids
                     await expect(
-                        controllerContract.call('claimMultiple', [
+                        controllerContract.connect(bob).claimMultiple(
                             [LOAN_CCY_TOKEN, LOAN_CCY_TOKEN, LOAN_CCY_TOKEN],
                             [0, 1],
                             [0, 1]
-                        ], { caller : bob })
+                        )
                     ).to.be.eventually.rejectedWith('revert')
 
                     // Too many account snapshot idxs
                     await expect(
-                        controllerContract.call('claimMultiple', [
+                        controllerContract.connect(bob).claimMultiple(
                             [LOAN_CCY_TOKEN, LOAN_CCY_TOKEN],
                             [0, 1, 1],
                             [0, 1]
-                        ], { caller : bob })
+                        )
                     ).to.be.eventually.rejectedWith('revert')
 
                     // Too many token snapshot idxs
                     await expect(
-                        controllerContract.call('claimMultiple', [
+                        controllerContract.connect(bob).claimMultiple(
                             [LOAN_CCY_TOKEN, LOAN_CCY_TOKEN],
                             [0, 1],
                             [0, 1, 1]
-                        ], { caller : bob })
+                        )
                     ).to.be.eventually.rejectedWith('revert')
                 })
 
@@ -4872,11 +4828,11 @@ describe('test BasePool', function () {
 
                     // Try to claim the second token twice
                     await expect(
-                            controllerContract.call('claimMultiple', [
+                            controllerContract.connect(bob).claimMultiple(
                             [LOAN_CCY_TOKEN, LOAN_CCY_TOKEN, LOAN_CCY_TOKEN],
                             [0, 1, 1],
                             [0, 1, 1]
-                        ], { caller : bob })
+                        )
                     ).to.be.eventually.rejectedWith('revert')
                 })
 
@@ -4917,11 +4873,11 @@ describe('test BasePool', function () {
 
                     // Try to claim with a zero-length parameter
                     await expect(
-                            controllerContract.call('claimMultiple', [
+                            controllerContract.connect(bob).claimMultiple(
                             [],
                             [],
                             []
-                        ], { caller : bob })
+                        )
                     ).to.be.eventually.rejectedWith('revert')
                 })
 
@@ -4961,19 +4917,19 @@ describe('test BasePool', function () {
                     await checkQuery('getTokenSnapshot', [LOAN_CCY_TOKEN, 1], [1000, 3000, 0, 100, 0], controllerContract)
 
                     await expect(
-                        controllerContract.call('claimMultiple', [
+                        controllerContract.connect(bob).claimMultiple(
                             [LOAN_CCY_TOKEN, LOAN_CCY_TOKEN],
                             [0, 1],
                             [1, 1] // Account snapshot 0 is the incorrect snapshot to claim token snapshot 1
-                        ], { caller : bob })
+                        )
                     ).to.be.eventually.rejectedWith('revert')
 
                     await expect(
-                        controllerContract.call('claimMultiple', [
+                        controllerContract.connect(charlie).claimMultiple(
                             [LOAN_CCY_TOKEN, LOAN_CCY_TOKEN],
                             [0, 1],
                             [1, 1] // Account snapshot 0 is the incorrect snapshot to claim token snapshot 1
-                        ], { caller : charlie })
+                        )
                     ).to.be.eventually.rejectedWith('revert')
 
                     // Check that no money was actually disbursed
@@ -6086,14 +6042,12 @@ describe('test BasePool', function () {
 
             await setTime(claimTimeAlice)
 
-            await contract.call('claim',
-                [
+            await contract.connect(alice).claim(
                     alice.address,
                     [1],
                     0, // Don't reinvest
                     10000
-                ], { caller : alice }
-            )
+                )
 
             await checkQuery('lastRewardTimestamp', [alice.address], [claimTimeAlice])
             await checkQuery('lastTrackedLiquidity', [alice.address], [liquidityAlice2])
@@ -6106,14 +6060,12 @@ describe('test BasePool', function () {
 
             await setTime(claimTimeBob)
 
-            await contract.call('claim',
-                [
+            await contract.connect(bob).claim(
                     bob.address,
                     [1],
                     0, // Don't reinvest
                     10000
-                ], { caller : bob }
-            )
+                )
 
             await checkQuery('lastRewardTimestamp', [alice.address], [claimTimeAlice])
             await checkQuery('lastTrackedLiquidity', [alice.address], [liquidityAlice2])
@@ -6207,14 +6159,12 @@ describe('test BasePool', function () {
 
             await setTime(claimTimeAlice)
 
-            await contract.call('claim',
-                [
+            await contract.connect(alice).claim(
                     alice.address,
                     [1],
                     1, // Reinvest
                     10000
-                ], { caller : alice }
-            )
+                )
 
             await checkQuery('lastRewardTimestamp', [alice.address], [claimTimeAlice])
             await checkQuery('lastTrackedLiquidity', [alice.address], [liquidityAlice2])
@@ -6227,14 +6177,12 @@ describe('test BasePool', function () {
 
             await setTime(claimTimeBob)
 
-            await contract.call('claim',
-                [
+            await contract.connect(bob).claim(
                     bob.address,
                     [1],
                     1, // Reinvest
                     10000
-                ], { caller : bob }
-            )
+                )
 
             await checkQuery('lastRewardTimestamp', [alice.address], [claimTimeAlice])
             await checkQuery('lastTrackedLiquidity', [alice.address], [liquidityAlice2])
@@ -6533,14 +6481,12 @@ describe('test BasePool', function () {
 
             await setTime(431)
 
-            await contract.call('claim',
-                [
+            await contract.connect(alice).claim(
                     alice.address,
                     [1],
                     0, // Don't reinvest
                     10000
-                ], { caller : alice }
-            )
+                )
             totalRewardAlice += Math.floor((431 - lastRewardTimestampAlice) * coefficient * trackedLiquidityAlice)
             trackedLiquidityAlice -= loanAlice
             lastRewardTimestampAlice = 431
@@ -6582,14 +6528,12 @@ describe('test BasePool', function () {
 
             await setTime(602)
 
-            await contract.call('claim',
-                [
+            await contract.connect(bob).claim(
                     bob.address,
                     [1],
                     1, // Reinvest
                     10000
-                ], { caller : bob }
-            )
+                )
             totalRewardBob += Math.floor((602 - lastRewardTimestampBob) * coefficient * trackedLiquidityBob)
             sharesBob += Math.floor(repaymentBob / totalLiquidity() * totalShares())
             liquidityBob += repaymentBob
