@@ -3489,9 +3489,7 @@ describe('test BasePool', function () {
                 it('deposits the vote token', async function () {
                     const [alice] = await newUsers([ [VOTE_TOKEN, 1000] ])
                     
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(200)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(200))
 
                     await checkEvents([{
                         account : alice.address,
@@ -3508,20 +3506,10 @@ describe('test BasePool', function () {
                     )
                 })
 
-                it('fails to deposit with the wrong token', async function () {
-                    const [alice] = await newUsers([ [LOAN_CCY_TOKEN, 1000] ])
-                    
-                    await expect(controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(200)}
-                    )).to.be.eventually.rejectedWith('revert')
-                })
-
                 it('fails to deposit with zero value', async function () {
                     const [alice] = await newUsers([ [VOTE_TOKEN, 1000] ])
 
-                    await expect(controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(0)}
-                    )).to.be.eventually.rejectedWith('revert')
+                    await expect(controllerContract.connect(alice).depositVoteToken(String(0))).to.be.eventually.rejectedWith('revert')
                 })
             })
 
@@ -3531,9 +3519,7 @@ describe('test BasePool', function () {
 
                     await setTime(1, controllerContract)
                     
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(200)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(200))
 
                     expect(await controllerContract.numAccountSnapshots(alice.address)).to.be.deep.equal('1')
                     expect(await controllerContract.getAccountSnapshot(alice.address, 0)).to.be.deep.equal(
@@ -3571,12 +3557,8 @@ describe('test BasePool', function () {
 
                     await setTime(19, controllerContract)
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(200)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(200)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(200))
+                    await controllerContract.connect(bob).depositVoteToken(String(200))
 
                     await setTime(19, controllerContract)
 
@@ -3589,9 +3571,7 @@ describe('test BasePool', function () {
 
                     await setTime(19, controllerContract)
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(200)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(200))
 
                     await setTime(19, controllerContract)
 
@@ -3604,9 +3584,7 @@ describe('test BasePool', function () {
 
                     await setTime(1, controllerContract)
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(200)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(200))
                     expect(await controllerContract.lastDepositTimestamp(alice.address)).to.be.deep.equal('1')
 
                     await setTime(9, controllerContract)
@@ -3655,12 +3633,8 @@ describe('test BasePool', function () {
                 it('votes on a proposal (without executing)', async function () {
                     const [alice, bob] = await newUsers([[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(100)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(100))
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
@@ -3684,12 +3658,8 @@ describe('test BasePool', function () {
                 it('votes on multiple proposals', async function () {
                     const [alice, bob] = await newUsers([[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(100)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(100))
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
@@ -3724,12 +3694,8 @@ describe('test BasePool', function () {
                 it('removes a vote on a proposal', async function () {
                     const [alice, bob] = await newUsers([[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(100)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(100))
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
@@ -3754,12 +3720,8 @@ describe('test BasePool', function () {
                 it('votes, removes and re-votes', async function () {
                     const [alice, bob] = await newUsers([[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(100)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(100))
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
@@ -3785,12 +3747,8 @@ describe('test BasePool', function () {
                 it('votes and executes a pause', async function () {
                     const [alice, bob] = await newUsers([[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(100)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(100))
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
@@ -3825,12 +3783,8 @@ describe('test BasePool', function () {
                 it('pauses and unpauses', async function () {
                     const [alice, bob] = await newUsers([[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(100)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(100))
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
@@ -3871,12 +3825,8 @@ describe('test BasePool', function () {
                 it('removes a vote after executing', async function () {
                     const [alice, bob] = await newUsers([[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(100)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(100))
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
@@ -3908,12 +3858,8 @@ describe('test BasePool', function () {
                 it('withdraws after removing all votes', async function () {
                     const [alice, bob] = await newUsers([[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(100)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(100))
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
@@ -3947,9 +3893,7 @@ describe('test BasePool', function () {
                 it('fails to vote when having zero voting power', async function () {
                     const [alice, bob] = await newUsers([[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
 
@@ -3961,12 +3905,8 @@ describe('test BasePool', function () {
                 it('fails to vote multiple times', async function () {
                     const [alice, bob] = await newUsers([[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(100)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(100))
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
@@ -3983,12 +3923,8 @@ describe('test BasePool', function () {
                 it('fails to remove a vote without having ever voted', async function () {
                     const [alice, bob] = await newUsers([[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(100)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(100))
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
@@ -4004,12 +3940,8 @@ describe('test BasePool', function () {
                 it('fails to remove a vote multiple times', async function () {
                     const [alice, bob] = await newUsers([[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(100)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(100))
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
@@ -4031,12 +3963,8 @@ describe('test BasePool', function () {
                 it('fails to vote on an executed proposal', async function () {
                     const [alice, bob] = await newUsers([[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(100)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(100))
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
@@ -4058,12 +3986,8 @@ describe('test BasePool', function () {
                 it('fails to vote on an expired proposal', async function () {
                     const [alice, bob] = await newUsers([[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(100)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(100))
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
@@ -4081,12 +4005,8 @@ describe('test BasePool', function () {
                 it('fails to withdraw when voting', async function () {
                     const [alice, bob] = await newUsers([[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(100)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(100))
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
@@ -4118,9 +4038,7 @@ describe('test BasePool', function () {
                 it('takes a first snapshot of a token', async function () {
                     const [alice] = await newUsers([ [VOTE_TOKEN, 1000], [COLL_CCY_TOKEN, 1000]])
                     await setTime(19, controllerContract)
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(50)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(50))
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '100' })
 
@@ -4142,16 +4060,12 @@ describe('test BasePool', function () {
                 it('takes only one snapshot despite multiple revenue deposits', async function () {
                     const [alice] = await newUsers([ [VOTE_TOKEN, 1000], [COLL_CCY_TOKEN, 1000]])
                     await setTime(19, controllerContract)
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(50)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(50))
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '25' })
                     expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('0')
                     
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(7)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(7))
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '100' })
                     expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('100')
@@ -4167,16 +4081,12 @@ describe('test BasePool', function () {
                 it('takes a second snapshot after enough time has passed', async function () {
                     const [alice] = await newUsers([ [VOTE_TOKEN, 1000], [COLL_CCY_TOKEN, 1000]])
                     await setTime(19, controllerContract)
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(50)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(50))
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '25' })
                     expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('0')
                     
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(7)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(7))
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '100' })
                     expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('100')
@@ -4195,16 +4105,12 @@ describe('test BasePool', function () {
                 it('takes only one snapshot despite multiple revenue deposits and a force-snapshot-check', async function () {
                     const [alice] = await newUsers([ [VOTE_TOKEN, 1000], [COLL_CCY_TOKEN, 1000]])
                     await setTime(19, controllerContract)
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(50)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(50))
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '25' })
                     expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('0')
                     
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(7)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(7))
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '100' })
                     expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('100')
@@ -4219,16 +4125,12 @@ describe('test BasePool', function () {
                 it('forces a second snapshot after enough time has passed', async function () {
                     const [alice] = await newUsers([ [VOTE_TOKEN, 1000], [COLL_CCY_TOKEN, 1000]])
                     await setTime(19, controllerContract)
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(50)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(50))
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '25' })
                     expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('0')
                     
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(7)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(7))
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '100' })
                     expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('100')
@@ -4246,9 +4148,7 @@ describe('test BasePool', function () {
                 it('takes snapshots for multiple intertwined tokens', async function () {
                     const [alice] = await newUsers([ [VOTE_TOKEN, 1000], [LOAN_CCY_TOKEN, 1000], [COLL_CCY_TOKEN, 1000]])
                     await setTime(19, controllerContract)
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(50)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(50))
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '25' })
                     expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('0')
@@ -4265,9 +4165,7 @@ describe('test BasePool', function () {
                     expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(['50', '14', '0', '29', '0'])
 
                     // Doesn't trigger anything
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(7)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(7))
 
                     expect(await controllerContract.numTokenSnapshots(COLL_CCY_TOKEN)).to.be.deep.equal('1')
                     expect(await controllerContract.getTokenSnapshot(COLL_CCY_TOKEN, 0)).to.be.deep.equal(['50', '25', '0', '19', '1'])
@@ -4318,12 +4216,8 @@ describe('test BasePool', function () {
                 it('claims individually', async function () {
                     const [alice, bob, charlie] = await newUsers([[LOAN_CCY_TOKEN, 10000]], [[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(50)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : charlie, tokenId : VOTE_TOKEN, amount : String(450)}
-                    )
+                    await controllerContract.connect(bob).depositVoteToken(String(50))
+                    await controllerContract.connect(charlie).depositVoteToken(String(450))
                     // Bob now owns 10%, Charlie 90%
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
@@ -4378,12 +4272,8 @@ describe('test BasePool', function () {
                 it('claims individually for multiple snapshots', async function () {
                     const [alice, bob, charlie] = await newUsers([[LOAN_CCY_TOKEN, 10000]], [[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(50)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : charlie, tokenId : VOTE_TOKEN, amount : String(450)}
-                    )
+                    await controllerContract.connect(bob).depositVoteToken(String(50))
+                    await controllerContract.connect(charlie).depositVoteToken(String(450))
                     // Bob now owns 10%, Charlie 90%
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
@@ -4395,12 +4285,8 @@ describe('test BasePool', function () {
 
                     await setTime(19, controllerContract)
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(150)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : charlie, tokenId : VOTE_TOKEN, amount : String(350)}
-                    )
+                    await controllerContract.connect(bob).depositVoteToken(String(150))
+                    await controllerContract.connect(charlie).depositVoteToken(String(350))
                     // Bob now owns 20%, Charlie 80%
 
                     await setTime(100, controllerContract)
@@ -4504,9 +4390,7 @@ describe('test BasePool', function () {
                 it('fails to claim twice', async function () {
                     const [alice, bob] = await newUsers([[LOAN_CCY_TOKEN, 10000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(50)}
-                    )
+                    await controllerContract.connect(bob).depositVoteToken(String(50))
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
                     // Snapshot has been taken
@@ -4526,9 +4410,7 @@ describe('test BasePool', function () {
                 it('fails to claim with an invalid token snapshot idx', async function () {
                     const [alice, bob] = await newUsers([[LOAN_CCY_TOKEN, 10000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(50)}
-                    )
+                    await controllerContract.connect(bob).depositVoteToken(String(50))
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
                     // Snapshot has been taken
@@ -4544,9 +4426,7 @@ describe('test BasePool', function () {
                 it('fails to claim with an invalid account snapshot idx', async function () {
                     const [alice, bob] = await newUsers([[LOAN_CCY_TOKEN, 10000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(50)}
-                    )
+                    await controllerContract.connect(bob).depositVoteToken(String(50))
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
                     // Snapshot has been taken
@@ -4562,9 +4442,7 @@ describe('test BasePool', function () {
                 it('fails to claim with an account snapshot idx after the snapshot', async function () {
                     const [alice, bob] = await newUsers([[LOAN_CCY_TOKEN, 10000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(50)}
-                    )
+                    await controllerContract.connect(bob).depositVoteToken(String(50))
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
                     // Snapshot has been taken
@@ -4584,9 +4462,7 @@ describe('test BasePool', function () {
                 it('fails to claim with an account snapshot idx too much before the snapshot', async function () {
                     const [alice, bob] = await newUsers([[LOAN_CCY_TOKEN, 10000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(50)}
-                    )
+                    await controllerContract.connect(bob).depositVoteToken(String(50))
 
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
                     // Snapshot has been taken
@@ -4595,9 +4471,7 @@ describe('test BasePool', function () {
                     expect(await controllerContract.getAccountSnapshot(bob.address, 0)).to.be.deep.equal(['50', '0', '0'])
 
                     // Deposit vote tokens again
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(50)}
-                    )
+                    await controllerContract.connect(bob).depositVoteToken(String(50))
 
                     await setTime(100, controllerContract)
                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
@@ -4635,9 +4509,7 @@ describe('test BasePool', function () {
                                 if (action == 'r') {
                                     await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '1000' })
                                 } else if (action == 'v') {
-                                    await controllerContract.call('depositVoteToken', [],
-                                        { caller : bob, tokenId : VOTE_TOKEN, amount : '1'}
-                                    )
+                                    await controllerContract.connect(bob).depositVoteToken('1')
                                 } else {
                                     await setTime(1, controllerContract)
                                 }
@@ -4668,12 +4540,8 @@ describe('test BasePool', function () {
                     const [alice, bob, charlie] = await newUsers([[LOAN_CCY_TOKEN, 10000]], [[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
                     // Take a voteToken snapshot
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(50)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : charlie, tokenId : VOTE_TOKEN, amount : String(450)}
-                    )
+                    await controllerContract.connect(bob).depositVoteToken(String(50))
+                    await controllerContract.connect(charlie).depositVoteToken(String(450))
                     // Bob has 10%, Charlie has 90%
 
                     // Take a token snapshot
@@ -4685,12 +4553,8 @@ describe('test BasePool', function () {
                     await checkQuery('getTokenSnapshot', [LOAN_CCY_TOKEN, 0], [500, 2000, 0, 0, 2], controllerContract)
 
                     // Take a voteToken snapshot
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(250)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : charlie, tokenId : VOTE_TOKEN, amount : String(250)}
-                    )
+                    await controllerContract.connect(bob).depositVoteToken(String(250))
+                    await controllerContract.connect(charlie).depositVoteToken(String(250))
                     // Bob has 30%, Charlie has 70%
 
                     await setTime(100, controllerContract)
@@ -4783,12 +4647,8 @@ describe('test BasePool', function () {
                     const [alice, bob, charlie] = await newUsers([[LOAN_CCY_TOKEN, 10000]], [[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
                     // Take a voteToken snapshot
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(50)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : charlie, tokenId : VOTE_TOKEN, amount : String(450)}
-                    )
+                    await controllerContract.connect(bob).depositVoteToken(String(50))
+                    await controllerContract.connect(charlie).depositVoteToken(String(450))
                     // Bob has 10%, Charlie has 90%
 
                     // Take a token snapshot
@@ -4800,12 +4660,8 @@ describe('test BasePool', function () {
                     await checkQuery('getTokenSnapshot', [LOAN_CCY_TOKEN, 0], [500, 2000, 0, 0, 2], controllerContract)
 
                     // Take a voteToken snapshot
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(250)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : charlie, tokenId : VOTE_TOKEN, amount : String(250)}
-                    )
+                    await controllerContract.connect(bob).depositVoteToken(String(250))
+                    await controllerContract.connect(charlie).depositVoteToken(String(250))
                     // Bob has 30%, Charlie has 70%
 
                     await setTime(100, controllerContract)
@@ -4920,12 +4776,8 @@ describe('test BasePool', function () {
                     const [alice, bob, charlie] = await newUsers([[LOAN_CCY_TOKEN, 10000]], [[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
                     // Take a voteToken snapshot
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(50)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : charlie, tokenId : VOTE_TOKEN, amount : String(450)}
-                    )
+                    await controllerContract.connect(bob).depositVoteToken(String(50))
+                    await controllerContract.connect(charlie).depositVoteToken(String(450))
                     // Bob has 10%, Charlie has 90%
 
                     // Take a token snapshot
@@ -4937,12 +4789,8 @@ describe('test BasePool', function () {
                     await checkQuery('getTokenSnapshot', [LOAN_CCY_TOKEN, 0], [500, 2000, 0, 0, 2], controllerContract)
 
                     // Take a voteToken snapshot
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(250)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : charlie, tokenId : VOTE_TOKEN, amount : String(250)}
-                    )
+                    await controllerContract.connect(bob).depositVoteToken(String(250))
+                    await controllerContract.connect(charlie).depositVoteToken(String(250))
                     // Bob has 30%, Charlie has 70%
 
                     await setTime(100, controllerContract)
@@ -4991,12 +4839,8 @@ describe('test BasePool', function () {
                     const [alice, bob, charlie] = await newUsers([[LOAN_CCY_TOKEN, 10000]], [[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
                     // Take a voteToken snapshot
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(50)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : charlie, tokenId : VOTE_TOKEN, amount : String(450)}
-                    )
+                    await controllerContract.connect(bob).depositVoteToken(String(50))
+                    await controllerContract.connect(charlie).depositVoteToken(String(450))
                     // Bob has 10%, Charlie has 90%
 
                     // Take a token snapshot
@@ -5008,12 +4852,8 @@ describe('test BasePool', function () {
                     await checkQuery('getTokenSnapshot', [LOAN_CCY_TOKEN, 0], [500, 2000, 0, 0, 2], controllerContract)
 
                     // Take a voteToken snapshot
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(250)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : charlie, tokenId : VOTE_TOKEN, amount : String(250)}
-                    )
+                    await controllerContract.connect(bob).depositVoteToken(String(250))
+                    await controllerContract.connect(charlie).depositVoteToken(String(250))
                     // Bob has 30%, Charlie has 70%
 
                     await setTime(100, controllerContract)
@@ -5044,12 +4884,8 @@ describe('test BasePool', function () {
                     const [alice, bob, charlie] = await newUsers([[LOAN_CCY_TOKEN, 10000]], [[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
                     // Take a voteToken snapshot
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(50)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : charlie, tokenId : VOTE_TOKEN, amount : String(450)}
-                    )
+                    await controllerContract.connect(bob).depositVoteToken(String(50))
+                    await controllerContract.connect(charlie).depositVoteToken(String(450))
                     // Bob has 10%, Charlie has 90%
 
                     // Take a token snapshot
@@ -5061,12 +4897,8 @@ describe('test BasePool', function () {
                     await checkQuery('getTokenSnapshot', [LOAN_CCY_TOKEN, 0], [500, 2000, 0, 0, 2], controllerContract)
 
                     // Take a voteToken snapshot
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(250)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : charlie, tokenId : VOTE_TOKEN, amount : String(250)}
-                    )
+                    await controllerContract.connect(bob).depositVoteToken(String(250))
+                    await controllerContract.connect(charlie).depositVoteToken(String(250))
                     // Bob has 30%, Charlie has 70%
 
                     await setTime(100, controllerContract)
@@ -5097,12 +4929,8 @@ describe('test BasePool', function () {
                     const [alice, bob, charlie] = await newUsers([[LOAN_CCY_TOKEN, 10000]], [[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
                     // Take a voteToken snapshot
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(50)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : charlie, tokenId : VOTE_TOKEN, amount : String(450)}
-                    )
+                    await controllerContract.connect(bob).depositVoteToken(String(50))
+                    await controllerContract.connect(charlie).depositVoteToken(String(450))
                     // Bob has 10%, Charlie has 90%
 
                     // Take a token snapshot
@@ -5114,12 +4942,8 @@ describe('test BasePool', function () {
                     await checkQuery('getTokenSnapshot', [LOAN_CCY_TOKEN, 0], [500, 2000, 0, 0, 2], controllerContract)
 
                     // Take a voteToken snapshot
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(250)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : charlie, tokenId : VOTE_TOKEN, amount : String(250)}
-                    )
+                    await controllerContract.connect(bob).depositVoteToken(String(250))
+                    await controllerContract.connect(charlie).depositVoteToken(String(250))
                     // Bob has 30%, Charlie has 70%
 
                     await setTime(100, controllerContract)
@@ -5182,12 +5006,8 @@ describe('test BasePool', function () {
                     
                     await controllerContract.call('depositRewardSupply', [], { caller : alice, tokenId : VOTE_TOKEN, amount : '10000000' })
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(100)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(100))
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
@@ -5240,12 +5060,8 @@ describe('test BasePool', function () {
                     
                     await controllerContract.call('depositRewardSupply', [], { caller : alice, tokenId : VOTE_TOKEN, amount : '10000000' })
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(100)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(100))
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
@@ -5365,12 +5181,8 @@ describe('test BasePool', function () {
                 it('approves a whitelist proposal', async function () {
                     const [alice, bob] = await newUsers([[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(100)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(100))
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     await controllerContract.connect(alice).createProposal(contract.address, Actions.Whitelist, 150)
 
@@ -5388,12 +5200,8 @@ describe('test BasePool', function () {
                 it('approves and de-approves a whitelist proposal', async function () {
                     const [alice, bob] = await newUsers([[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(100)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(100))
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     await controllerContract.connect(alice).createProposal(contract.address, Actions.Whitelist, 150)
 
@@ -5426,12 +5234,8 @@ describe('test BasePool', function () {
                 it('fails to approve without being the veto holder', async function () {
                     const [alice, bob] = await newUsers([[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(100)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(100))
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     await controllerContract.connect(alice).createProposal(contract.address, Actions.Whitelist, 150)
 
@@ -5443,12 +5247,8 @@ describe('test BasePool', function () {
                 it('fails to approve a non-whitelist proposal', async function () {
                     const [alice, bob] = await newUsers([[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(100)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(100))
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     await controllerContract.connect(alice).createProposal(contract.address, Actions.Dewhitelist, 150)
 
@@ -5460,12 +5260,8 @@ describe('test BasePool', function () {
                 it('fails to de-approve an executed proposal', async function () {
                     const [alice, bob] = await newUsers([[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(100)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(100))
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     await controllerContract.connect(alice).createProposal(contract.address, Actions.Whitelist, 150)
 
@@ -5485,12 +5281,8 @@ describe('test BasePool', function () {
                 it('whitelists a pool', async function () {
                     const [alice, bob] = await newUsers([[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(100)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(100))
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
@@ -5526,12 +5318,8 @@ describe('test BasePool', function () {
                 it('whitelists a pool (with approval before votes)', async function () {
                     const [alice, bob] = await newUsers([[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(100)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(100))
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
@@ -5575,12 +5363,8 @@ describe('test BasePool', function () {
                 it('whitelists & de-whitelists a pool', async function () {
                     const [alice, bob] = await newUsers([[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(100)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(100))
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
@@ -5639,12 +5423,8 @@ describe('test BasePool', function () {
                 it('whitelists a pool (with a zero-address veto holder)', async function () {
                     const [alice, bob] = await newUsers([[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(100)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(100))
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
@@ -5687,12 +5467,8 @@ describe('test BasePool', function () {
                     
                     await controllerContract.call('depositRewardSupply', [], { caller : alice, tokenId : VOTE_TOKEN, amount : '10000000' })
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(100)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(100))
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
@@ -5741,12 +5517,8 @@ describe('test BasePool', function () {
                     
                     await controllerContract.call('depositRewardSupply', [], { caller : alice, tokenId : VOTE_TOKEN, amount : '10000000' })
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(100)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(100))
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
@@ -5810,12 +5582,8 @@ describe('test BasePool', function () {
                     // 1M instead of 10M
                     await controllerContract.call('depositRewardSupply', [], { caller : alice, tokenId : VOTE_TOKEN, amount : '1000000' })
 
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : alice, tokenId : VOTE_TOKEN, amount : String(100)}
-                    )
-                    await controllerContract.call('depositVoteToken', [],
-                        { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
-                    )
+                    await controllerContract.connect(alice).depositVoteToken(String(100))
+                    await controllerContract.connect(bob).depositVoteToken(String(900))
 
                     expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
