@@ -126,9 +126,19 @@ const checkQuery = async (methodName : string, params : Array<any>, expected : A
         if (typeof x == 'boolean') {
             return x
         }
+
+        if (x instanceof BigNumber) {
+            return x.toString()
+        }
+
         return String(x)
     }
-    const parsedExpected = serialize(expected) //expected.map(x => String(x))
+    let parsedExpected = serialize(expected) //expected.map(x => String(x))
+
+    if (parsedExpected.length == 1) {
+        parsedExpected = parsedExpected[0]
+    }
+
     expect(await referenceContract[methodName](...params)).to.be.deep.equal(parsedExpected)
 }
 
@@ -778,8 +788,8 @@ describe('test BasePool', function () {
                 ])
 
                 // The money goes to Bob!
-                expect(await alice.balance(LOAN_CCY_TOKEN)).to.be.deep.equal('0')
-                expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(withdrawnLiquidity))
+                expect(await loanCcyTokenContract.balanceOf(alice.address)).to.be.deep.equal('0')
+                expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(withdrawnLiquidity))
             })
             it('fails to remove liquidity without being authorized', async function () {
                 const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ], [])
@@ -841,7 +851,6 @@ describe('test BasePool', function () {
                 
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
-                console.log('NEW TERMS:', await contract.query('loanTerms', [collateralPledge]))
 
                 await contract.connect(bob).borrow(bob.address, // onBehalfOf
                         String(collateralPledge), 200, // minLoanLimit
@@ -867,7 +876,7 @@ describe('test BasePool', function () {
                     expiry : 1 + LOAN_TENOR,
                     referralCode : 0
                 }])
-                expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(loanAmount))
+                expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(loanAmount))
                 
             })
             it('borrows while being a lender', async function () {
@@ -909,7 +918,7 @@ describe('test BasePool', function () {
                         liquidity - loanAmount, shares, REWARD_COEFFICIENT, 2
                     ]
                 )
-                expect(await alice.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(loanAmount))
+                expect(await loanCcyTokenContract.balanceOf(alice.address)).to.be.deep.equal(String(loanAmount))
             })
             it('fails to borrow after the deadline', async function () {
                 const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ], [[COLL_CCY_TOKEN, 8000]])
@@ -1073,7 +1082,7 @@ describe('test BasePool', function () {
                         liquidity - loanAmount, shares, REWARD_COEFFICIENT, 2
                     ]
                 )
-                expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(10000 + loanAmount))
+                expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(10000 + loanAmount))
 
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
@@ -1091,8 +1100,8 @@ describe('test BasePool', function () {
                     }
                 ])
 
-                expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(10000 + loanAmount - repaymentAmount))
-                expect(await bob.balance(COLL_CCY_TOKEN)).to.be.deep.equal(String(8000))
+                expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(10000 + loanAmount - repaymentAmount))
+                expect(await collCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(8000))
             })
 
             it('repays for an authorized address', async function () {
@@ -1132,7 +1141,7 @@ describe('test BasePool', function () {
                         liquidity - loanAmount, shares, REWARD_COEFFICIENT, 2
                     ]
                 )
-                expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(loanAmount))
+                expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(loanAmount))
 
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
@@ -1150,8 +1159,8 @@ describe('test BasePool', function () {
                     }
                 ])
 
-                expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(loanAmount))
-                expect(await charlie.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(10000 - repaymentAmount))
+                expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(loanAmount))
+                expect(await loanCcyTokenContract.balanceOf(charlie.address)).to.be.deep.equal(String(10000 - repaymentAmount))
             })
 
             it('fails to repay without being authorized', async function () {
@@ -1191,7 +1200,7 @@ describe('test BasePool', function () {
                         liquidity - loanAmount, shares, REWARD_COEFFICIENT, 2
                     ]
                 )
-                expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(loanAmount))
+                expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(loanAmount))
 
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
@@ -1234,7 +1243,7 @@ describe('test BasePool', function () {
                         liquidity - loanAmount, shares, REWARD_COEFFICIENT, 2
                     ]
                 )
-                expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(10000 + loanAmount))
+                expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(10000 + loanAmount))
 
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
@@ -1278,7 +1287,7 @@ describe('test BasePool', function () {
                         liquidity - loanAmount, shares, REWARD_COEFFICIENT, 2
                     ]
                 )
-                expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(10000 + loanAmount))
+                expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(10000 + loanAmount))
 
                 
                 await setTime(LOAN_TENOR + 2)
@@ -1320,7 +1329,7 @@ describe('test BasePool', function () {
                         liquidity - loanAmount, shares, REWARD_COEFFICIENT, 2
                     ]
                 )
-                expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(10000 + loanAmount))
+                expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(10000 + loanAmount))
 
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
@@ -1362,7 +1371,7 @@ describe('test BasePool', function () {
                         liquidity - loanAmount, shares, REWARD_COEFFICIENT, 2
                     ]
                 )
-                expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(10000 + loanAmount))
+                expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(10000 + loanAmount))
 
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
@@ -1409,7 +1418,7 @@ describe('test BasePool', function () {
                         liquidity - loanAmount, shares, REWARD_COEFFICIENT, 2
                     ]
                 )
-                expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(10000 + loanAmount))
+                expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(10000 + loanAmount))
 
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
@@ -1451,7 +1460,7 @@ describe('test BasePool', function () {
                         liquidity - loanAmount, shares, REWARD_COEFFICIENT, 2
                     ]
                 )
-                expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(10000 + loanAmount))
+                expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(10000 + loanAmount))
 
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
@@ -1492,7 +1501,7 @@ describe('test BasePool', function () {
                         liquidity - loanAmount, shares, REWARD_COEFFICIENT, 2
                     ]
                 )
-                expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(10000 + loanAmount))
+                expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(10000 + loanAmount))
 
                 await expect(
                     contract.repay(
@@ -1598,7 +1607,7 @@ describe('test BasePool', function () {
                     repayments : repaymentAmount,
                     collateral : 0
                 }])
-                expect(await alice.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(8000 - liquidity + repaymentAmount))
+                expect(await loanCcyTokenContract.balanceOf(alice.address)).to.be.deep.equal(String(8000 - liquidity + repaymentAmount))
             })
 
             it('claims the repayment for a successful loan and re-invests', async function () {
@@ -1704,7 +1713,7 @@ describe('test BasePool', function () {
                         collateral : 0
                     }
                 ])
-                expect(await alice.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(8000 - liquidity))
+                expect(await loanCcyTokenContract.balanceOf(alice.address)).to.be.deep.equal(String(8000 - liquidity))
             })
 
             it('claims the repayment for multiple loans and re-invests', async function () {
@@ -1763,8 +1772,6 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                console.log(await contract.query('loanTerms', [collateralPledge]))
-
                 await contract.connect(bob).borrow(bob.address, // onBehalfOf
                         String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
@@ -1783,8 +1790,6 @@ describe('test BasePool', function () {
                         1, MIN_LPING_PERIOD, 0, [shares], []
                     ]
                 )
-
-                console.log(await contract.query('loanIdxToLoanInfo', [1]))
 
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
@@ -1805,9 +1810,6 @@ describe('test BasePool', function () {
                         1, MIN_LPING_PERIOD, 0, [shares], []
                     ]
                 )
-
-                
-                console.log(await contract.query('loanIdxToLoanInfo', [2]))
 
                 await contract.connect(bob).repay(
                     2,
@@ -1861,7 +1863,7 @@ describe('test BasePool', function () {
                         collateral : 0
                     }
                 ])
-                expect(await alice.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(8000 - liquidity))
+                expect(await loanCcyTokenContract.balanceOf(alice.address)).to.be.deep.equal(String(8000 - liquidity))
             })
 
             it('splits the loan interest among two parties', async function () {
@@ -1987,7 +1989,7 @@ describe('test BasePool', function () {
                     repayments : repaymentAlice,
                     collateral : 0
                 }])
-                expect(await alice.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(repaymentAlice))
+                expect(await loanCcyTokenContract.balanceOf(alice.address)).to.be.deep.equal(String(repaymentAlice))
 
                 await contract.connect(bob).claim(
                         bob.address,
@@ -2020,7 +2022,7 @@ describe('test BasePool', function () {
                     repayments : repaymentBob,
                     collateral : 0
                 }])
-                expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(repaymentBob))
+                expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(repaymentBob))
             })
 
             it('splits the loan interest among two parties (with re-invest)', async function () {
@@ -2155,7 +2157,7 @@ describe('test BasePool', function () {
                         collateral : 0
                     }
                 ])
-                expect(await alice.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(0))
+                expect(await loanCcyTokenContract.balanceOf(alice.address)).to.be.deep.equal(String(0))
 
                 await contract.connect(bob).claim(
                         bob.address,
@@ -2196,7 +2198,7 @@ describe('test BasePool', function () {
                         collateral : 0
                     }
                 ])
-                expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(0))
+                expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(0))
             })
 
             it('checks that claiming without re-investing and then re-depositing is the same as re-investing', async function () {
@@ -2316,7 +2318,7 @@ describe('test BasePool', function () {
                         1, MIN_LPING_PERIOD, 0, [sharesBob], []
                     ]
                 )
-                expect(await alice.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(repaymentAlice))
+                expect(await loanCcyTokenContract.balanceOf(alice.address)).to.be.deep.equal(String(repaymentAlice))
 
                 await contract.connect(bob).claim(
                         bob.address,
@@ -2341,7 +2343,7 @@ describe('test BasePool', function () {
                         2, MIN_LPING_PERIOD + 2, 0, [sharesBob + shares2Bob], []
                     ]
                 )
-                expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(0))
+                expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(0))
 
                 // Alice now re-deposits what would have been her re-investment
 
@@ -3058,7 +3060,7 @@ describe('test BasePool', function () {
                         liquidity - loanAmount, shares, REWARD_COEFFICIENT, 2
                     ]
                 )
-                expect(await alice.balance(COLL_CCY_TOKEN)).to.be.deep.equal(String(collateralPledge))
+                expect(await collCcyTokenContract.balanceOf(alice.address)).to.be.deep.equal(String(collateralPledge))
             })
 
             it('claims for an authorized address', async function () {
@@ -3108,7 +3110,7 @@ describe('test BasePool', function () {
                     repayments : repaymentAmount,
                     collateral : 0
                 }])
-                expect(await charlie.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(repaymentAmount))
+                expect(await loanCcyTokenContract.balanceOf(charlie.address)).to.be.deep.equal(String(repaymentAmount))
             })
 
             it('fails to claim without being authorized', async function () {
@@ -3324,7 +3326,7 @@ describe('test BasePool', function () {
                     )
                     
                     expect(await controllerContract.voteTokenBalance(alice.address)).to.be.deep.equal('150')
-                    expect(await alice.balance(VOTE_TOKEN)).to.be.deep.equal(String(1000 - 150))
+                    expect(await voteTokenContract.balanceOf(alice.address)).to.be.deep.equal(String(1000 - 150))
 
                     await checkEvents([
                         {
@@ -3526,7 +3528,7 @@ describe('test BasePool', function () {
                     }], controllerContract)
 
                     // Proposal received 100 votes and wasn't executed
-                    expect(await controllerContract.getProposal(0)).to.be.deep.equal([contract.address, String(Actions.Pause), '100', ZERO_ADDRESS, false, '150'])
+                    await checkQuery('getProposal', [0], [contract.address, String(Actions.Pause), '100', ZERO_ADDRESS, false, '150'], controllerContract)
                 })
 
                 it('votes and executes a pause', async function () {
@@ -3557,8 +3559,6 @@ describe('test BasePool', function () {
                         }
                     ], controllerContract)
 
-                    // @ts-ignore
-                    await vite.utils.waitFor(async () => (await contract.query('paused', []))[0], 'Wait for pause message')
                     expect(await contract.paused()).to.be.deep.equal(true)
 
                     // Proposal received 900 votes and was executed
@@ -3579,8 +3579,6 @@ describe('test BasePool', function () {
                     await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
                     await controllerContract.connect(bob).vote(0)
 
-                    // @ts-ignore
-                    await vite.utils.waitFor(async () => (await contract.query('paused', []))[0], 'Wait for pause message')
                     expect(await contract.paused()).to.be.deep.equal(true)
 
                     // Unpause
@@ -3601,8 +3599,6 @@ describe('test BasePool', function () {
                         }
                     ], controllerContract)
 
-                    // @ts-ignore
-                    await vite.utils.waitFor(async () => !(await contract.query('paused', []))[0], 'Wait for unpause message')
                     expect(await contract.paused()).to.be.deep.equal(false)
                     
                 })
@@ -3621,8 +3617,6 @@ describe('test BasePool', function () {
                     await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
                     await controllerContract.connect(bob).vote(0)
 
-                    // @ts-ignore
-                    await vite.utils.waitFor(async () => (await contract.query('paused', []))[0], 'Wait for pause message')
                     expect(await contract.paused()).to.be.deep.equal(true)
 
                     await controllerContract.connect(bob).removeVote(0)
@@ -3654,8 +3648,6 @@ describe('test BasePool', function () {
                     await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
                     await controllerContract.connect(bob).vote(0)
 
-                    // @ts-ignore
-                    await vite.utils.waitFor(async () => (await contract.query('paused', []))[0], 'Wait for pause message')
                     expect(await contract.paused()).to.be.deep.equal(true)
 
                     await controllerContract.connect(bob).removeVote(0)
@@ -3672,7 +3664,7 @@ describe('test BasePool', function () {
                         }
                     ], controllerContract)
 
-                    expect(await bob.balance(VOTE_TOKEN)).to.be.deep.equal(String(150))
+                    expect(await voteTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(150))
                 })
 
                 it('fails to vote when having zero voting power', async function () {
@@ -3759,8 +3751,6 @@ describe('test BasePool', function () {
                     await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
                     await controllerContract.connect(bob).vote(0)
 
-                    // @ts-ignore
-                    await vite.utils.waitFor(async () => (await contract.query('paused', []))[0], 'Wait for pause message')
                     expect(await contract.paused()).to.be.deep.equal(true)
 
                     await expect(
@@ -3815,7 +3805,7 @@ describe('test BasePool', function () {
                     ).to.be.eventually.rejectedWith('revert')
 
                     await expect(
-                        contract.connnect(alice).unpause()
+                        contract.connect(alice).unpause()
                     ).to.be.eventually.rejectedWith('revert')
                 })
             })
@@ -4013,7 +4003,7 @@ describe('test BasePool', function () {
 
                     // Bob claims
                     console.log('Checking before...')
-                    expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal('0')
+                    expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal('0')
                     await controllerContract.connect(bob).claimToken(LOAN_CCY_TOKEN, 0, 0)
                     expect(await controllerContract.hasClaimedSnapshot(LOAN_CCY_TOKEN, 0, bob.address)).to.be.deep.equal(true)
 
@@ -4031,7 +4021,7 @@ describe('test BasePool', function () {
                     expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(
                         ['500', '2000', '200', '0', '2']
                     )
-                    expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal('200')
+                    expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal('200')
 
                     // Charlie claims
                     await controllerContract.connect(charlie).claimToken(LOAN_CCY_TOKEN, 0, 0)
@@ -4051,7 +4041,7 @@ describe('test BasePool', function () {
                     expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(
                         ['500', '2000', '2000', '0', '2']
                     )
-                    expect(await charlie.balance(LOAN_CCY_TOKEN)).to.be.deep.equal('1800')
+                    expect(await loanCcyTokenContract.balanceOf(charlie.address)).to.be.deep.equal('1800')
                 })
 
                 it('claims individually for multiple snapshots', async function () {
@@ -4103,7 +4093,7 @@ describe('test BasePool', function () {
                     expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(
                         ['500', '2000', '200', '0', '2']
                     )
-                    expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal('200')
+                    expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal('200')
 
                     // Charlie claims
                     await controllerContract.connect(charlie).claimToken(LOAN_CCY_TOKEN, 0, 0)
@@ -4124,7 +4114,7 @@ describe('test BasePool', function () {
                     expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(
                         ['500', '2000', '2000', '0', '2']
                     )
-                    expect(await charlie.balance(LOAN_CCY_TOKEN)).to.be.deep.equal('1800')
+                    expect(await loanCcyTokenContract.balanceOf(charlie.address)).to.be.deep.equal('1800')
 
                     // Second snapshot claiming
 
@@ -4147,7 +4137,7 @@ describe('test BasePool', function () {
                     expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 1)).to.be.deep.equal(
                         ['1000', '3000', '600', '100', '0']
                     )
-                    expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(200 + 600))
+                    expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(200 + 600))
 
                     // Charlie claims
                     await controllerContract.connect(charlie).claimToken(LOAN_CCY_TOKEN, 1, 1)
@@ -4168,7 +4158,7 @@ describe('test BasePool', function () {
                     expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 1)).to.be.deep.equal(
                         ['1000', '3000', '3000', '100', '0']
                     )
-                    expect(await charlie.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(1800 + 2400))
+                    expect(await loanCcyTokenContract.balanceOf(charlie.address)).to.be.deep.equal(String(1800 + 2400))
                 })
 
 
@@ -4288,7 +4278,6 @@ describe('test BasePool', function () {
                         it('tests with ' + actions, async function () {
                             const [alice, bob] = await newUsers([[LOAN_CCY_TOKEN, 10000]], [[VOTE_TOKEN, 1000]])
 
-                            console.log(await controllerContract.query('getTime', []))
                             // @ts-ignore
                             for (const action of actions) {
                                 if (action == 'r') {
@@ -4424,8 +4413,8 @@ describe('test BasePool', function () {
 
                     const expectedBobAmount = 2000 * (50 / 500) + 3000 * (300 / 1000)
                     const expectedCharlieAmount = 2000 * (450 / 500) + 3000 * (700 / 1000)
-                    expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(expectedBobAmount))
-                    expect(await charlie.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(expectedCharlieAmount))
+                    expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(expectedBobAmount))
+                    expect(await loanCcyTokenContract.balanceOf(charlie.address)).to.be.deep.equal(String(expectedCharlieAmount))
                 })
 
                 it('claims multiple token snapshots using 1-length arrays', async function () {
@@ -4553,8 +4542,8 @@ describe('test BasePool', function () {
 
                     const expectedBobAmount = 2000 * (50 / 500) + 3000 * (300 / 1000)
                     const expectedCharlieAmount = 2000 * (450 / 500) + 3000 * (700 / 1000)
-                    expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(expectedBobAmount))
-                    expect(await charlie.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(expectedCharlieAmount))
+                    expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(expectedBobAmount))
+                    expect(await loanCcyTokenContract.balanceOf(charlie.address)).to.be.deep.equal(String(expectedCharlieAmount))
                 })
 
                 it('fails to claim with incorrect param lengths', async function () {
@@ -4762,8 +4751,8 @@ describe('test BasePool', function () {
                     ).to.be.eventually.rejectedWith('revert')
 
                     // Check that no money was actually disbursed
-                    expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal('0')
-                    expect(await charlie.balance(LOAN_CCY_TOKEN)).to.be.deep.equal('0')
+                    expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal('0')
+                    expect(await loanCcyTokenContract.balanceOf(charlie.address)).to.be.deep.equal('0')
                 })
             })
 
@@ -4837,7 +4826,7 @@ describe('test BasePool', function () {
                     await checkQuery('rewardBalance', [dan.address], [reward], controllerContract)
 
                     await controllerContract.connect(dan).collectReward(false)
-                    expect(await dan.balance(VOTE_TOKEN)).to.be.deep.equal(String(reward))
+                    expect(await voteTokenContract.balanceOf(dan.address)).to.be.deep.equal(String(reward))
                 })
 
                 it('collects the reward (with depositing)', async function () {
@@ -4893,7 +4882,7 @@ describe('test BasePool', function () {
                     await setTime(123, controllerContract)
 
                     await controllerContract.connect(dan).collectReward(true)
-                    expect(await dan.balance(VOTE_TOKEN)).to.be.deep.equal(String(0))
+                    expect(await voteTokenContract.balanceOf(dan.address)).to.be.deep.equal(String(0))
                     await checkQuery('voteTokenBalance', [dan.address], [reward], controllerContract)
                     await checkQuery('lastDepositTimestamp', [dan.address], [123], controllerContract)
 
@@ -5877,7 +5866,7 @@ describe('test BasePool', function () {
             await checkQuery('rewardBalance', [alice.address], [rewardAlice], controllerContract)
             await checkQuery('rewardBalance', [bob.address], [0], controllerContract)
 
-            expect(await alice.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(repaymentAlice))
+            expect(await loanCcyTokenContract.balanceOf(alice.address)).to.be.deep.equal(String(repaymentAlice))
 
             await setTime(claimTimeBob)
 
@@ -5895,8 +5884,8 @@ describe('test BasePool', function () {
             await checkQuery('rewardBalance', [alice.address], [rewardAlice], controllerContract)
             await checkQuery('rewardBalance', [bob.address], [rewardBob], controllerContract)
 
-            expect(await alice.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(repaymentAlice))
-            expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(repaymentBob))
+            expect(await loanCcyTokenContract.balanceOf(alice.address)).to.be.deep.equal(String(repaymentAlice))
+            expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(repaymentBob))
         })
 
         it('checks that rewards are distributed correctly with claim (with re-invest)', async function () {
@@ -5990,7 +5979,7 @@ describe('test BasePool', function () {
             await checkQuery('rewardBalance', [alice.address], [rewardAlice], controllerContract)
             await checkQuery('rewardBalance', [bob.address], [0], controllerContract)
 
-            expect(await alice.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(0))
+            expect(await loanCcyTokenContract.balanceOf(alice.address)).to.be.deep.equal(String(0))
 
             await setTime(claimTimeBob)
 
@@ -6008,8 +5997,8 @@ describe('test BasePool', function () {
             await checkQuery('rewardBalance', [alice.address], [rewardAlice], controllerContract)
             await checkQuery('rewardBalance', [bob.address], [rewardBob], controllerContract)
 
-            expect(await alice.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(0))
-            expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(0))
+            expect(await loanCcyTokenContract.balanceOf(alice.address)).to.be.deep.equal(String(0))
+            expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(0))
         })
 
         it('checks that rewards are distributed correctly with forceRewardUpdate', async function () {
@@ -6250,7 +6239,6 @@ describe('test BasePool', function () {
 
             console.log('Current liquidity:', totalLiquidity())
             console.log('Current shares:', totalShares())
-            console.log(await contract.query('getPoolInfo', []))
             console.log('Removing', sharesRemovedAlice, 'shares and', liquidityRemovedAlice, 'liquidity')
 
             await contract.connect(alice).removeLiquidity(
