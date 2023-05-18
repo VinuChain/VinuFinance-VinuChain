@@ -1460,8 +1460,7 @@ describe('test BasePool', function () {
                     contract.connect(bob).repay(
                     1,
                     bob.address
-                ], { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(repaymentAmount) })
-                ).to.be.eventually.rejectedWith('revert')
+                )).to.be.eventually.rejectedWith('revert')
             })
             it('fails to borrow and repay atomically', async function () {
                 const [alice, bob] = await newUsers(
@@ -1496,7 +1495,7 @@ describe('test BasePool', function () {
                 expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(10000 + loanAmount))
 
                 await expect(
-                    contract.call('repay', [
+                    contract.repay(
                         1,
                         bob.address
                     )
