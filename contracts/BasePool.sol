@@ -2,12 +2,12 @@
 
 pragma solidity ^0.8.0;
 
-import "node_modules/@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IBasePool} from "./interfaces/IBasePool.sol";
 import "./interfaces/IPausable.sol";
 import "./interfaces/IController.sol";
-import "../node_modules/@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
 contract BasePool is IBasePool, Pausable, IPausable {
     using SafeERC20 for IERC20;
@@ -123,7 +123,7 @@ contract BasePool is IBasePool, Pausable, IPausable {
         require(_liquidityBnds.length == 2, "Liquidity bounds length must be 2.");
 
         require(_tokens[0] != _tokens[1], "Loan and collateral must not be the same.");
-        if (_tokens[0] == address(0) || _tokens[1] == address(0))
+        if (address(_tokens[0]) == address(0) || address(_tokens[1]) == address(0))
             revert("Loan and collateral tokens must not be 0.");
         require(_loanTenor >= MIN_TENOR, "Load tenor must be at least MIN_TENOR.");
         require(_maxLoanPerColl > 0, "Max loan must not be 0.");
@@ -274,6 +274,7 @@ contract BasePool is IBasePool, Pausable, IPausable {
      * @dev When the contract is paused, this function cannot be called
      *
      * @param _onBehalfOf Address to borrow on behalf of
+     * @param _sendAmount Amount of collateral to send
      * @param _minLoanLimit Minimum loan amount
      * @param _maxRepayLimit Maximum repayment amount
      * @param _deadline Deadline for the transaction
@@ -281,6 +282,7 @@ contract BasePool is IBasePool, Pausable, IPausable {
      */
     function borrow(
         address _onBehalfOf,
+        uint128 _sendAmount,
         uint128 _minLoanLimit,
         uint128 _maxRepayLimit,
         uint256 _deadline,
@@ -292,7 +294,6 @@ contract BasePool is IBasePool, Pausable, IPausable {
             lastAddOfTxOrigin[tx.origin] == _timestamp ||
             _onBehalfOf == address(0)
         ) revert("Invalid operation.");
-        uint128 sendAmount = _acceptTransfer(collCcyToken);
         // get borrow terms and do checks
         (
             uint128 loanAmount,
@@ -302,7 +303,7 @@ contract BasePool is IBasePool, Pausable, IPausable {
             uint256 _creatorFee,
             uint256 _totalLiquidity
         ) = _borrow(
-                sendAmount,
+                _sendAmount,
                 _minLoanLimit,
                 _maxRepayLimit,
                 _timestamp
@@ -332,6 +333,7 @@ contract BasePool is IBasePool, Pausable, IPausable {
             // transfer creator fee to creator in collateral ccy
             _depositRevenue(collCcyToken, _creatorFee);
 
+            collCcyToken.safeTransferFrom(msg.sender, address(this), _sendAmount);
             // transfer loanAmount in loan ccy
             loanCcyToken.safeTransfer(msg.sender, loanAmount);
         }
@@ -368,8 +370,6 @@ contract BasePool is IBasePool, Pausable, IPausable {
         if (!(_loanOwner == _recipient || msg.sender == _recipient))
             revert("Invalid recipient.");
         checkSenderApproval(_loanOwner, IBasePool.ApprovalTypes.REPAY);
-
-        uint128 sendAmount = _acceptTransfer(loanCcyToken);
 
         LoanInfo storage loanInfo = loanIdxToLoanInfo[_loanIdx];
         uint256 timestamp = block.timestamp;
@@ -1224,7 +1224,7 @@ contract BasePool is IBasePool, Pausable, IPausable {
     }
 
     function _depositRevenue(IERC20 _token, uint256 _amount) internal {
-        _token.safeIncreaseAllowance(poolController, _amount);
+        _token.safeIncreaseAllowance(address(poolController), _amount);
         poolController.depositRevenue(_token, _amount);
     }
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-import "node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IPausable.sol";
 
 interface IController {
@@ -152,7 +152,6 @@ interface IController {
      * @param _liquidity Liquidity of the awardee
      * @param _duration Duration of the deposit by the awardee
      * @param _rewardCoefficient Reward coefficient of the awarding pool
-     * @param _requestIdx Index of the request
      */
-    function requestTokenDistribution(address _account, uint128 _liquidity, uint32 _duration, uint96 _rewardCoefficient, uint256 _requestIdx) external;
+    function requestTokenDistribution(address _account, uint128 _liquidity, uint32 _duration, uint96 _rewardCoefficient) external;
 }

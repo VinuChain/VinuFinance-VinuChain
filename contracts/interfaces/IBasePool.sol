@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import "node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IBasePool {
     event NewSubPool(
@@ -140,11 +140,13 @@ interface IBasePool {
      * @dev This function will update loanIdxsWhereSharesChanged only if not
      * the first add. If address on behalf of is not sender, then sender must have permission.
      * @param _onBehalfOf Recipient of the LP shares
+     * @param _sendAmount Amount to deposit
      * @param _deadline Last timestamp after which function will revert
      * @param _referralCode Will possibly be used later to reward referrals
      */
     function addLiquidity(
         address _onBehalfOf,
+        uint128 _sendAmount,
         uint256 _deadline,
         uint256 _referralCode
     ) payable external;
@@ -165,6 +167,7 @@ interface IBasePool {
     /**
      * @notice Function which allows borrowing from the pool
      * @param _onBehalf Will become owner of the loan
+     * @param _sendAmount Amount of collateral to send
      * @param _minLoan Minimum loan currency amount acceptable to borrower
      * @param _maxRepay Maximum allowable loan currency amount borrower is willing to repay
      * @param _deadline Timestamp after which transaction will be void
@@ -172,6 +175,7 @@ interface IBasePool {
      */
     function borrow(
         address _onBehalf,
+        uint128 _sendAmount,
         uint128 _minLoan,
         uint128 _maxRepay,
         uint256 _deadline,
