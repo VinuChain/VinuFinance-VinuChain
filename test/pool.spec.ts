@@ -843,16 +843,12 @@ describe('test BasePool', function () {
                 await setTime(1)
                 console.log('NEW TERMS:', await contract.query('loanTerms', [collateralPledge]))
 
-                await contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -889,16 +885,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
 
-                await contract.call('borrow', 
-                    [
-                        alice.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(alice).borrow(alice.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : alice, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
                 await checkEvents([{
                     borrower : alice.address,
@@ -929,16 +921,12 @@ describe('test BasePool', function () {
 
                 await setTime(151)
 
-                await expect(contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        200, // minLoanLimit
+                await expect(contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )).to.be.eventually.rejectedWith('revert')
+                    )).to.be.eventually.rejectedWith('revert')
             })
             it('fails to borrow below the minimum loan limit', async function () {
                 const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ], [[COLL_CCY_TOKEN, 8000]])
@@ -955,16 +943,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
 
-                await expect(contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        429, // minLoanLimit
+                await expect(contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 429, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )).to.be.eventually.rejectedWith('revert')
+                    )).to.be.eventually.rejectedWith('revert')
             })
             it('fails to borrow above the maximum repay limit', async function () {
                 const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ], [[COLL_CCY_TOKEN, 8000]])
@@ -980,16 +964,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
 
-                await expect(contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        200, // minLoanLimit
+                await expect(contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         469, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )).to.be.eventually.rejectedWith('revert')
+                    )).to.be.eventually.rejectedWith('revert')
             })
             it('fails to borrow when the liquidity is below minimum', async function () {
                 const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ], [[COLL_CCY_TOKEN, 8000]])
@@ -1002,16 +982,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
 
-                await expect(contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        1, // minLoanLimit
+                await expect(contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 1, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )).to.be.eventually.rejectedWith('revert')
+                    )).to.be.eventually.rejectedWith('revert')
             })
             it('fails to borrow enough to cause the liquidity to go below the minimum', async function () {
                 const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ], [[COLL_CCY_TOKEN, 8000]])
@@ -1024,16 +1000,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
 
-                await expect(contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        1, // minLoanLimit
+                await expect(contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 1, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )).to.be.eventually.rejectedWith('revert')
+                    )).to.be.eventually.rejectedWith('revert')
             })
             it('fails to borrow with zero collateral', async function () {
                 const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ], [[COLL_CCY_TOKEN, 8000]])
@@ -1046,38 +1018,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
 
-                await expect(contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        200, // minLoanLimit
+                await expect(contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )).to.be.eventually.rejectedWith('revert')
-            })
-            it('fails to borrow with the wrong collateral token', async function () {
-                const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ], [[LOAN_CCY_TOKEN, 8000]])
-
-                const liquidity = 8000
-                const collateralPledge = 500
-
-                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
-                
-                // The contract doesn't allow atomic addLiquidity+borrow
-                await setTime(1)
-
-                await expect(contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        200, // minLoanLimit
-                        10000, // maxRepayLimit
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(collateralPledge) }
-                )).to.be.eventually.rejectedWith('revert')
+                    )).to.be.eventually.rejectedWith('revert')
             })
             it('fails to add liquidity and borrow atomically', async function () {
                 const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ], [[COLL_CCY_TOKEN, 8000]])
@@ -1087,16 +1033,12 @@ describe('test BasePool', function () {
 
                 await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
 
-                await expect(contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        200, // minLoanLimit
+                await expect(contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )).to.be.eventually.rejectedWith('revert')
+                    )).to.be.eventually.rejectedWith('revert')
             })
         })
 
@@ -1118,16 +1060,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity + borrow
                 await setTime(1)
 
-                await contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -1181,16 +1119,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity + borrow
                 await setTime(1)
 
-                await contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -1244,16 +1178,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity + borrow
                 await setTime(1)
 
-                await contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -1291,16 +1221,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity + borrow
                 await setTime(1)
 
-                await contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -1338,16 +1264,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity + borrow
                 await setTime(1)
 
-                await contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
 
                 await checkQuery('getPoolInfo', [],
@@ -1385,16 +1307,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity + borrow
                 await setTime(1)
 
-                await contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -1431,16 +1349,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity + borrow
                 await setTime(1)
 
-                await contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -1482,16 +1396,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity + borrow
                 await setTime(1)
 
-                await contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -1528,16 +1438,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity + borrow
                 await setTime(1)
 
-                await contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -1574,16 +1480,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity + borrow
                 await setTime(1)
 
-                await contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -1632,16 +1534,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
 
-                await contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -1733,16 +1631,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
 
-                await contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -1851,16 +1745,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
 
-                await contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -1876,16 +1766,12 @@ describe('test BasePool', function () {
 
                 console.log(await contract.query('loanTerms', [collateralPledge]))
 
-                await contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -2022,16 +1908,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
 
-                await contract.call('borrow', 
-                    [
-                        charlie.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(charlie).borrow(charlie.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : charlie, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -2186,16 +2068,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
 
-                await contract.call('borrow', 
-                    [
-                        charlie.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(charlie).borrow(charlie.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : charlie, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -2366,16 +2244,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
 
-                await contract.call('borrow', 
-                    [
-                        charlie.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(charlie).borrow(charlie.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : charlie, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -2603,16 +2477,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
 
-                await contract.call('borrow', 
-                    [
-                        charlie.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(charlie).borrow(charlie.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : charlie, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
                 currentAliceLiquidity -= loanAmount * (currentAliceShares / currentTotalShares())
                 currentBobLiquidity -= loanAmount * (currentBobShares / currentTotalShares())
@@ -2907,27 +2777,19 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
 
-                await contract.call('borrow', 
-                    [
-                        charlie.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(charlie).borrow(charlie.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : charlie, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
-                await contract.call('borrow', 
-                    [
-                        charlie.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(charlie).borrow(charlie.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : charlie, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
@@ -3042,27 +2904,19 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
 
-                await contract.call('borrow', 
-                    [
-                        charlie.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(charlie).borrow(charlie.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : charlie, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
-                await contract.call('borrow', 
-                    [
-                        charlie.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(charlie).borrow(charlie.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : charlie, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
@@ -3175,16 +3029,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
 
-                await contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
                 // Cause the loan to expire
                 await setTime(LOAN_TENOR + 2)
@@ -3231,16 +3081,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
 
-                await contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
@@ -3285,16 +3131,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
 
-                await contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
@@ -3323,16 +3165,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
 
-                await contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
@@ -3360,16 +3198,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
 
-                await contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
@@ -3402,16 +3236,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
 
-                await contract.call('borrow', 
-                    [
-                        bob.address, // onBehalfOf
-                        200, // minLoanLimit
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    ],
-                    { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-                )
+                    )
 
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
@@ -5764,16 +5594,12 @@ describe('test BasePool', function () {
             await setTime(1)
             await setTime(1, controllerContract)
 
-            await contract.call('borrow', 
-                [
-                    bob.address, // onBehalfOf
-                    200, // minLoanLimit
+            await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                    String(collateralPledge), 200, // minLoanLimit
                     10000, // maxRepayLimit
                     150, // deadline
                     0 // referralCode
-                ],
-                { caller : bob, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-            )
+                )
 
             await controllerContract.waitForHeight(await contract.height())
 
@@ -6012,16 +5838,12 @@ describe('test BasePool', function () {
             // The contract doesn't allow atomic addLiquidity+borrow
             await setTime(loanTime)
 
-            await contract.call('borrow', 
-                [
-                    charlie.address, // onBehalfOf
-                    200, // minLoanLimit
+            await contract.connect(charlie).borrow(charlie.address, // onBehalfOf
+                    String(collateralPledge), 200, // minLoanLimit
                     10000, // maxRepayLimit
                     10000, // deadline
                     0 // referralCode
-                ],
-                { caller : charlie, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-            )
+                )
 
             // The contract doesn't allow atomic borrow + repay
             await setTime(loanTime + 1)
@@ -6128,16 +5950,12 @@ describe('test BasePool', function () {
             // The contract doesn't allow atomic addLiquidity+borrow
             await setTime(loanTime)
 
-            await contract.call('borrow', 
-                [
-                    charlie.address, // onBehalfOf
-                    200, // minLoanLimit
+            await contract.connect(charlie).borrow(charlie.address, // onBehalfOf
+                    String(collateralPledge), 200, // minLoanLimit
                     10000, // maxRepayLimit
                     10000, // deadline
                     0 // referralCode
-                ],
-                { caller : charlie, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-            )
+                )
 
             // The contract doesn't allow atomic borrow + repay
             await setTime(loanTime + 1)
@@ -6405,16 +6223,12 @@ describe('test BasePool', function () {
             const repaymentAlice = Math.floor(repaymentAmount * liquidityAlice / totalLiquidity())
             const repaymentBob = Math.floor(repaymentAmount * liquidityBob / totalLiquidity())
 
-            await contract.call('borrow', 
-                [
-                    charlie.address, // onBehalfOf
-                    200, // minLoanLimit
+            await contract.connect(charlie).borrow(charlie.address, // onBehalfOf
+                    String(collateralPledge), 200, // minLoanLimit
                     10000, // maxRepayLimit
                     10000, // deadline
                     0 // referralCode
-                ],
-                { caller : charlie, tokenId : COLL_CCY_TOKEN, amount : String(collateralPledge) }
-            )
+                )
             liquidityAlice -= loanAlice
             liquidityBob -= loanBob
             await checkTracked()
