@@ -160,7 +160,8 @@ async function contractReceiveAll(referenceContract : ethers.Contract) {
 const newUsers = async (...tokenInfos : Array<Array<Array<String | Number>>>) => {
     const users : Array<any> = []
     for (const tokenInfo of tokenInfos) {
-        const [ user ] = await ethers.getSigners() //vite.newAccount(config.networks.local.mnemonic, mnemonicCounter++, provider)
+        const [...allUsers] = await ethers.getSigners() //vite.newAccount(config.networks.local.mnemonic, mnemonicCounter++, provider)
+        const user = allUsers[mnemonicCounter++]
 
         const currentTokens = [loanCcyTokenContract, collCcyTokenContract, voteTokenContract]
         const currentContracts = [contract, controllerContract]
@@ -185,7 +186,7 @@ const setTime = async (newTime : Number, referenceContract : ethers.Contract | u
     if (!referenceContract) {
         referenceContract = contract
     }
-    await referenceContract.call('setTime', [newTime], { caller : deployer })
+    await referenceContract.connect(deployer).setTime(newTime)
 }
 
 const addTimestampSupport = (contractSrc) => {
@@ -503,9 +504,12 @@ describe('test BasePool', function () {
             it('adds liquidity for an authorized address', async function () {
                 const [alice, bob] = await newUsers([], [ [LOAN_CCY_TOKEN, 10000] ])
 
+                console.log('Alice: ', alice.address)
+                console.log('Bob: ', bob.address)
+
                 const bits = approvalBits(['addLiquidity'])
                 console.log('Bits:', bits)
-                await contract.call('setApprovals', [bob.address, bits], { caller : alice })
+                await contract.connect(alice).setApprovals(bob.address, bits)
 
                 await contract.connect(bob).addLiquidity(alice.address, '5000' ,150,0)
 
@@ -538,27 +542,23 @@ describe('test BasePool', function () {
 
                 const bits = approvalBits(['repay', 'removeLiquidity', 'claim', 'forceRewardUpdate', 'resendRewardRequest'])
                 console.log('Bits:', bits)
-                await contract.call('setApprovals', [bob.address, bits], { caller : alice })
+                await contract.connect(alice).setApprovals(bob.address, bits)
 
-                await expect(contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : '5000' }
+                await expect(contract.connect(bob).addLiquidity( 
+                    alice.address, // onBehalfOf
+                    '5000',
+                    150, // deadline
+                    0 // referralCode
                 )).to.be.eventually.rejectedWith('revert')
             })
             it('fails to add liquidity with an incorrect token', async function () {
                 const [alice] = await newUsers([ [COLL_CCY_TOKEN, 10000] ])
 
-                await expect(contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '5000' }
+                await expect(contract.connect(alice).addLiquidity(
+                    alice.address, // onBehalfOf
+                    '5000',
+                    150, // deadline
+                    0 // referralCode
                 )).to.be.eventually.rejectedWith('revert')
             })
             it('fails to add liquidity after the deadline', async function () {
@@ -566,13 +566,11 @@ describe('test BasePool', function () {
 
                 await setTime(151)
 
-                await expect(contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '5000' }
+                await expect(contract.connect(alice).addLiquidity( 
+                    alice.address, // onBehalfOf
+                    '5000',
+                    150, // deadline
+                    0 // referralCode
                 )).to.be.eventually.rejectedWith('revert')
             })
         })
@@ -587,13 +585,10 @@ describe('test BasePool', function () {
 
                 await setTime(MIN_LPING_PERIOD + 1)
 
-                await contract.call('removeLiquidity', 
-                    [
+                await contract.connect(alice).removeLiquidity(
                         alice.address, // onBehalfOf
                         200 // shares
-                    ],
-                    { caller : alice }
-                )
+                    )
 
                 // The removal formula is withdrawnShares * (liquidity - minLiquidity) / totalShares
                 // Note that this means that a small percentage of the liquidity is not withdrawn
@@ -635,13 +630,10 @@ describe('test BasePool', function () {
 
                 await setTime(MIN_LPING_PERIOD + 1)
 
-                await contract.call('removeLiquidity', 
-                    [
+                await contract.connect(alice).removeLiquidity(
                         alice.address, // onBehalfOf
                         200 // shares
-                    ],
-                    { caller : alice }
-                )
+                    )
 
                 // The removal formula is withdrawnShares * (liquidity - minLiquidity) / totalShares
                 // Note that this means that a small percentage of the liquidity is not withdrawn
@@ -675,13 +667,10 @@ describe('test BasePool', function () {
 
                 await setTime(2 * (MIN_LPING_PERIOD + 1))
 
-                await contract.call('removeLiquidity', 
-                    [
+                await contract.connect(alice).removeLiquidity(
                         alice.address, // onBehalfOf
                         200 // shares
-                    ],
-                    { caller : alice }
-                )
+                    )
 
                 // The removal formula is withdrawnShares * (totalLiquidity - minLiquidity) / totalShares
                 const withdrawnLiquidity2 = Math.floor(200 * (finalLiquidity1 + 6000 - MIN_LIQUIDITY) / (finalShares1 + addedShares2))
@@ -719,13 +708,10 @@ describe('test BasePool', function () {
 
                 await setTime(MIN_LPING_PERIOD + 1)
 
-                await contract.call('removeLiquidity', 
-                    [
+                await contract.connect(alice).removeLiquidity(
                         alice.address, // onBehalfOf
                         3000 // shares
-                    ],
-                    { caller : alice }
-                )
+                    )
 
                 // The removal formula is withdrawnShares * (liquidity - minLiquidity) / totalShares
                 // However, only 3000 shares (equivalent to 15000 liquidity) will be removed,
@@ -759,17 +745,14 @@ describe('test BasePool', function () {
                 const newShares = 1000 * 8000 / MIN_LIQUIDITY
 
                 const bits = approvalBits(['removeLiquidity'])
-                await contract.call('setApprovals', [bob.address, bits], { caller : alice })
+                await contract.connect(alice).setApprovals(bob.address, bits)
 
                 await setTime(MIN_LPING_PERIOD + 1)
 
-                await contract.call('removeLiquidity', 
-                    [
+                await contract.connect(bob).removeLiquidity(
                         alice.address, // onBehalfOf
                         200 // shares
-                    ],
-                    { caller : bob }
-                )
+                    )
 
                 // The removal formula is withdrawnShares * (liquidity - minLiquidity) / totalShares
                 // Note that this means that a small percentage of the liquidity is not withdrawn
@@ -804,17 +787,14 @@ describe('test BasePool', function () {
                 await contract.connect(alice).addLiquidity(alice.address, '8000' ,150,0)
 
                 const bits = approvalBits(['repay', 'addLiquidity', 'claim', 'forceRewardUpdate', 'resendRewardRequest'])
-                await contract.call('setApprovals', [bob.address, bits], { caller : alice })
+                await contract.connect(alice).setApprovals(bob.address, bits)
 
                 await setTime(MIN_LPING_PERIOD + 1)
 
-                await expect(contract.call('removeLiquidity', 
-                    [
+                await expect(contract.connect(bob).removeLiquidity(
                         alice.address, // onBehalfOf
                         200 // shares
-                    ],
-                    { caller : bob }
-                )).to.be.eventually.rejectedWith('revert')
+                    )).to.be.eventually.rejectedWith('revert')
             })
             it('fails to remove more liquidity than the user has', async function () {
                 const [alice] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ])
@@ -825,13 +805,10 @@ describe('test BasePool', function () {
 
                 await setTime(MIN_LPING_PERIOD + 1)
 
-                expect(contract.call('removeLiquidity', 
-                    [
+                expect(contract.connect(alice).removeLiquidity(
                         alice.address, // onBehalfOf
                         newShares + 1 // shares
-                    ],
-                    { caller : alice }
-                )).to.eventually.be.rejectedWith('revert')
+                    )).to.eventually.be.rejectedWith('revert')
             })
             it('fails to remove liquidity before the minimum timestamp', async function () {
                 const [alice] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ])
@@ -842,13 +819,10 @@ describe('test BasePool', function () {
 
                 await setTime(MIN_LPING_PERIOD - 1)
 
-                expect(contract.call('removeLiquidity', 
-                    [
+                expect(contract.connect(alice).removeLiquidity(
                         alice.address, // onBehalfOf
                         newShares // shares
-                    ],
-                    { caller : alice }
-                )).to.eventually.be.rejectedWith('revert')
+                    )).to.eventually.be.rejectedWith('revert')
             })
         })
 
@@ -1200,7 +1174,7 @@ describe('test BasePool', function () {
                 
                 const bits = approvalBits(['repay'])
                 console.log('Bits:', bits)
-                await contract.call('setApprovals', [charlie.address, bits], { caller : bob })
+                await contract.connect(bob).setApprovals(charlie.address, bits)
 
                 await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
                 
@@ -1263,7 +1237,7 @@ describe('test BasePool', function () {
                 
                 const bits = approvalBits(['addLiquidity', 'removeLiquidity', 'claim', 'forceRewardUpdate', 'resendRewardRequest'])
                 console.log('Bits:', bits)
-                await contract.call('setApprovals', [charlie.address, bits], { caller : bob })
+                await contract.connect(bob).setApprovals(charlie.address, bits)
 
                 await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
                 
@@ -2915,14 +2889,14 @@ describe('test BasePool', function () {
 
                 const balanceBeforeRemoveAlice = Number(await alice.balance())
 
-                await contract.call('removeLiquidity', [alice.address, currentAliceShares], { caller : alice })
+                await contract.connect(alice).removeLiquidity(alice.address, currentAliceShares)
 
                 const balanceAfterRemoveAlice = Number(await alice.balance())
                 expect(balanceAfterRemoveAlice - balanceBeforeRemoveAlice).to.be.equal(expectedAliceWithdrawal)
 
                 const balanceBeforeRemoveBob = Number(await bob.balance())
 
-                await contract.call('removeLiquidity', [bob.address, currentBobShares], { caller : bob })
+                await contract.connect(bob).removeLiquidity(bob.address, currentBobShares)
 
                 const balanceAfterRemoveBob = Number(await bob.balance())
                 expect(balanceAfterRemoveBob - balanceBeforeRemoveBob).to.be.equal(expectedBobWithdrawal)
@@ -3282,7 +3256,7 @@ describe('test BasePool', function () {
 
                 const bits = approvalBits(['claim'])
                 console.log('Bits:', bits)
-                await contract.call('setApprovals', [charlie.address, bits], { caller : alice })
+                await contract.connect(alice).setApprovals(charlie.address, bits)
 
                 await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
                 
@@ -3338,7 +3312,7 @@ describe('test BasePool', function () {
 
                 const bits = approvalBits(['repay', 'addLiquidity', 'removeLiquidity', 'forceRewardUpdate', 'resendRewardRequest'])
                 console.log('Bits:', bits)
-                await contract.call('setApprovals', [charlie.address, bits], { caller : alice })
+                await contract.connect(alice).setApprovals(charlie.address, bits)
 
                 await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
                 
@@ -3568,9 +3542,7 @@ describe('test BasePool', function () {
 
                     await setTime(19, controllerContract)
 
-                    await controllerContract.call('withdrawVoteToken', [String(50)],
-                        { caller : alice }
-                    )
+                    await controllerContract.connect(alice).withdrawVoteToken(String(50))
 
                     expect(await controllerContract.numAccountSnapshots(alice.address)).to.be.deep.equal('2')
                     expect(await controllerContract.getAccountSnapshot(alice.address, 0)).to.be.deep.equal(
@@ -3609,9 +3581,7 @@ describe('test BasePool', function () {
                     await setTime(19, controllerContract)
 
                     expect(
-                        controllerContract.call('withdrawVoteToken', [String(201)],
-                        { caller : alice }
-                    )).to.be.eventually.rejectedWith()
+                        controllerContract.connect(alice).withdrawVoteToken(String(201))).to.be.eventually.rejectedWith()
                 })
 
                 it('fails to withdraw zero tokens', async function() {
@@ -3626,9 +3596,7 @@ describe('test BasePool', function () {
                     await setTime(19, controllerContract)
 
                     expect(
-                        controllerContract.call('withdrawVoteToken', [String(0)],
-                        { caller : alice }
-                    )).to.be.eventually.rejectedWith()
+                        controllerContract.connect(alice).withdrawVoteToken(String(0))).to.be.eventually.rejectedWith()
                 })
 
                 it('fails to withdraw too early', async function() {
@@ -3643,9 +3611,7 @@ describe('test BasePool', function () {
 
                     await setTime(9, controllerContract)
 
-                    await expect(controllerContract.call('withdrawVoteToken', [String(50)],
-                        { caller : alice }
-                    )).to.be.eventually.rejectedWith('revert')
+                    await expect(controllerContract.connect(alice).withdrawVoteToken(String(50))).to.be.eventually.rejectedWith('revert')
                 })
             })
 
@@ -3653,7 +3619,7 @@ describe('test BasePool', function () {
                 it('creates a proposal', async function ()  {
                     const [alice] = await newUsers([])
 
-                    await controllerContract.call('createProposal', [contract.address, Actions.Pause, 150], { caller : alice })
+                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
 
                     await checkEvents([{
                         proposalIdx : 0,
@@ -3671,7 +3637,7 @@ describe('test BasePool', function () {
                     const [alice] = await newUsers([])
 
                     await expect(
-                        controllerContract.call('createProposal', [contract.address, 4, 150], { caller : alice })
+                        controllerContract.connect(alice).createProposal(contract.address, 4, 150)
                     ).to.be.eventually.rejectedWith('revert')
                 })
 
@@ -3680,7 +3646,7 @@ describe('test BasePool', function () {
 
                     await setTime(151, controllerContract)
                     await expect(
-                        controllerContract.call('createProposal', [contract.address, Actions.Pause, 150], { caller : alice })
+                        controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
                     ).to.be.eventually.rejectedWith('revert')
                 })
             })
@@ -3700,9 +3666,9 @@ describe('test BasePool', function () {
 
                     // Alice has 10% of the voting power
 
-                    await controllerContract.call('createProposal', [contract.address, Actions.Pause, 150], { caller : alice })
+                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
 
-                    await controllerContract.call('vote', [0], {caller : alice })
+                    await controllerContract.connect(alice).vote(0)
 
                     await checkEvents([{
                         proposalIdx : 0,
@@ -3729,10 +3695,10 @@ describe('test BasePool', function () {
 
                     // Alice has 10% of the voting power
 
-                    await controllerContract.call('createProposal', [contract.address, Actions.Pause, 150], { caller : alice })
-                    await controllerContract.call('createProposal', [contract.address, Actions.Pause, 150], { caller : alice })
+                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
+                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
 
-                    await controllerContract.call('vote', [0], {caller : alice })
+                    await controllerContract.connect(alice).vote(0)
 
                     await checkEvents([{
                         proposalIdx : 0,
@@ -3741,7 +3707,7 @@ describe('test BasePool', function () {
                         newTotalVotes : 100
                     }], controllerContract)
 
-                    await controllerContract.call('vote', [1], {caller : alice })
+                    await controllerContract.connect(alice).vote(1)
 
                     await checkEvents([{
                         proposalIdx : 1,
@@ -3769,10 +3735,10 @@ describe('test BasePool', function () {
 
                     // Alice has 10% of the voting power
 
-                    await controllerContract.call('createProposal', [contract.address, Actions.Pause, 150], { caller : alice })
+                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
 
-                    await controllerContract.call('vote', [0], {caller : alice })
-                    await controllerContract.call('removeVote', [0], {caller : alice })
+                    await controllerContract.connect(alice).vote(0)
+                    await controllerContract.connect(alice).removeVote(0)
 
                     await checkEvents([{
                         proposalIdx : 0,
@@ -3799,11 +3765,11 @@ describe('test BasePool', function () {
 
                     // Alice has 10% of the voting power
 
-                    await controllerContract.call('createProposal', [contract.address, Actions.Pause, 150], { caller : alice })
+                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
 
-                    await controllerContract.call('vote', [0], {caller : alice })
-                    await controllerContract.call('removeVote', [0], {caller : alice })
-                    await controllerContract.call('vote', [0], {caller : alice })
+                    await controllerContract.connect(alice).vote(0)
+                    await controllerContract.connect(alice).removeVote(0)
+                    await controllerContract.connect(alice).vote(0)
 
                     await checkEvents([{
                         proposalIdx : 0,
@@ -3830,9 +3796,9 @@ describe('test BasePool', function () {
 
                     // Bob has 90% of the voting power
 
-                    await controllerContract.call('createProposal', [contract.address, Actions.Pause, 150], { caller : alice })
+                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
 
-                    await controllerContract.call('vote', [0], {caller : bob })
+                    await controllerContract.connect(bob).vote(0)
 
                     await checkEvents([
                         {
@@ -3871,16 +3837,16 @@ describe('test BasePool', function () {
                     // Bob has 90% of the voting power
 
                     // Pause
-                    await controllerContract.call('createProposal', [contract.address, Actions.Pause, 150], { caller : alice })
-                    await controllerContract.call('vote', [0], {caller : bob })
+                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
+                    await controllerContract.connect(bob).vote(0)
 
                     // @ts-ignore
                     await vite.utils.waitFor(async () => (await contract.query('paused', []))[0], 'Wait for pause message')
                     expect(await contract.paused()).to.be.deep.equal(true)
 
                     // Unpause
-                    await controllerContract.call('createProposal', [contract.address, Actions.Unpause, 150], { caller : alice })
-                    await controllerContract.call('vote', [1], {caller : bob })
+                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Unpause, 150)
+                    await controllerContract.connect(bob).vote(1)
 
                     await checkEvents([
                         {
@@ -3917,14 +3883,14 @@ describe('test BasePool', function () {
                     // Bob has 90% of the voting power
 
                     // Pause
-                    await controllerContract.call('createProposal', [contract.address, Actions.Pause, 150], { caller : alice })
-                    await controllerContract.call('vote', [0], {caller : bob})
+                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
+                    await controllerContract.connect(bob).vote(0)
 
                     // @ts-ignore
                     await vite.utils.waitFor(async () => (await contract.query('paused', []))[0], 'Wait for pause message')
                     expect(await contract.paused()).to.be.deep.equal(true)
 
-                    await controllerContract.call('removeVote', [0], {caller : bob})
+                    await controllerContract.connect(bob).removeVote(0)
 
                     await checkEvents([{
                         proposalIdx : 0,
@@ -3954,18 +3920,16 @@ describe('test BasePool', function () {
                     // Bob has 90% of the voting power
 
                     // Pause
-                    await controllerContract.call('createProposal', [contract.address, Actions.Pause, 150], { caller : alice })
-                    await controllerContract.call('vote', [0], {caller : bob})
+                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
+                    await controllerContract.connect(bob).vote(0)
 
                     // @ts-ignore
                     await vite.utils.waitFor(async () => (await contract.query('paused', []))[0], 'Wait for pause message')
                     expect(await contract.paused()).to.be.deep.equal(true)
 
-                    await controllerContract.call('removeVote', [0], {caller : bob})
+                    await controllerContract.connect(bob).removeVote(0)
 
-                    await controllerContract.call('withdrawVoteToken', [String(50)],
-                        { caller : bob }
-                    )
+                    await controllerContract.connect(bob).withdrawVoteToken(String(50))
 
                     await checkEvents([
                         {
@@ -3987,10 +3951,10 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    await controllerContract.call('createProposal', [contract.address, Actions.Pause, 150], { caller : alice })
+                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
 
                     await expect(
-                        controllerContract.call('vote', [0], {caller : alice })
+                        controllerContract.connect(alice).vote(0)
                     ).to.be.eventually.rejectedWith('revert')
                 })
 
@@ -4008,11 +3972,11 @@ describe('test BasePool', function () {
 
                     // Alice has 10% of the voting power
 
-                    await controllerContract.call('createProposal', [contract.address, Actions.Pause, 150], { caller : alice })
+                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
 
-                    await controllerContract.call('vote', [0], {caller : alice })
+                    await controllerContract.connect(alice).vote(0)
                     await expect(
-                        controllerContract.call('vote', [0], {caller : alice })
+                        controllerContract.connect(alice).vote(0)
                     ).to.be.eventually.rejectedWith('revert')
                 })
 
@@ -4030,10 +3994,10 @@ describe('test BasePool', function () {
 
                     // Alice has 10% of the voting power
 
-                    await controllerContract.call('createProposal', [contract.address, Actions.Pause, 150], { caller : alice })
+                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
 
                     await expect(
-                        controllerContract.call('removeVote', [0], {caller : alice })
+                        controllerContract.connect(alice).removeVote(0)
                     ).to.be.eventually.rejectedWith('revert')
                 })
 
@@ -4051,16 +4015,16 @@ describe('test BasePool', function () {
 
                     // Alice has 10% of the voting power
 
-                    await controllerContract.call('createProposal', [contract.address, Actions.Pause, 150], { caller : alice })
+                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
 
-                    await controllerContract.call('vote', [0], {caller : alice })
+                    await controllerContract.connect(alice).vote(0)
 
                     // Remove once
-                    await controllerContract.call('removeVote', [0], {caller : alice })
+                    await controllerContract.connect(alice).removeVote(0)
 
                     // Remove twice
                     await expect(
-                        controllerContract.call('removeVote', [0], {caller : alice })
+                        controllerContract.connect(alice).removeVote(0)
                     ).to.be.eventually.rejectedWith('revert')
                 })
 
@@ -4079,15 +4043,15 @@ describe('test BasePool', function () {
                     // Bob has 90% of the voting power
 
                     // Pause
-                    await controllerContract.call('createProposal', [contract.address, Actions.Pause, 150], { caller : alice })
-                    await controllerContract.call('vote', [0], {caller : bob})
+                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
+                    await controllerContract.connect(bob).vote(0)
 
                     // @ts-ignore
                     await vite.utils.waitFor(async () => (await contract.query('paused', []))[0], 'Wait for pause message')
                     expect(await contract.paused()).to.be.deep.equal(true)
 
                     await expect(
-                        controllerContract.call('vote', [0], {caller : alice})
+                        controllerContract.connect(alice).vote(0)
                     ).to.be.eventually.rejectedWith('revert')
                 })
 
@@ -4105,12 +4069,12 @@ describe('test BasePool', function () {
 
                     // Bob has 90% of the voting power
 
-                    await controllerContract.call('createProposal', [contract.address, Actions.Pause, 150], { caller : alice })
+                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
 
                     await setTime(151, controllerContract)
 
                     await expect(
-                        controllerContract.call('vote', [0], {caller : alice})
+                        controllerContract.connect(alice).vote(0)
                     ).to.be.eventually.rejectedWith('revert')
                 })
 
@@ -4129,11 +4093,11 @@ describe('test BasePool', function () {
                     // Bob has 90% of the voting power
 
                     // Create & vote
-                    await controllerContract.call('createProposal', [contract.address, Actions.Pause, 150], { caller : alice })
-                    await controllerContract.call('vote', [0], {caller : alice})
+                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
+                    await controllerContract.connect(alice).vote(0)
 
                     await expect(
-                        controllerContract.call('withdrawVoteToken', [String(50)], { caller : alice })
+                        controllerContract.connect(alice).withdrawVoteToken(String(50))
                     ).to.be.eventually.rejectedWith('revert')
 
                 })
@@ -4246,7 +4210,7 @@ describe('test BasePool', function () {
                     expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('100')
                     
                     await setTime(118, controllerContract)
-                    await controllerContract.call('forceTokenSnapshotCheck', [COLL_CCY_TOKEN], { caller : alice })
+                    await controllerContract.connect(alice).forceTokenSnapshotCheck(COLL_CCY_TOKEN)
 
                     expect(await controllerContract.numTokenSnapshots(COLL_CCY_TOKEN)).to.be.deep.equal('1')
                     expect(await controllerContract.getTokenSnapshot(COLL_CCY_TOKEN, 0)).to.be.deep.equal(['50', '25', '0', '19', '1'])
@@ -4270,7 +4234,7 @@ describe('test BasePool', function () {
                     expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('100')
 
                     await setTime(119, controllerContract)
-                    await controllerContract.call('forceTokenSnapshotCheck', [COLL_CCY_TOKEN], { caller : alice })
+                    await controllerContract.connect(alice).forceTokenSnapshotCheck(COLL_CCY_TOKEN)
                     expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('0')
 
                     
@@ -4371,7 +4335,7 @@ describe('test BasePool', function () {
                     // Bob claims
                     console.log('Checking before...')
                     expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal('0')
-                    await controllerContract.call('claimToken', [LOAN_CCY_TOKEN, 0, 0], { caller : bob })
+                    await controllerContract.connect(bob).claimToken(LOAN_CCY_TOKEN, 0, 0)
                     expect(await controllerContract.hasClaimedSnapshot(LOAN_CCY_TOKEN, 0, bob.address)).to.be.deep.equal(true)
 
                     await checkEvents([
@@ -4391,7 +4355,7 @@ describe('test BasePool', function () {
                     expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal('200')
 
                     // Charlie claims
-                    await controllerContract.call('claimToken', [LOAN_CCY_TOKEN, 0, 0], { caller : charlie })
+                    await controllerContract.connect(charlie).claimToken(LOAN_CCY_TOKEN, 0, 0)
                     expect(await controllerContract.hasClaimedSnapshot(LOAN_CCY_TOKEN, 0, charlie.address)).to.be.deep.equal(true)
 
                     await checkEvents([
@@ -4450,7 +4414,7 @@ describe('test BasePool', function () {
                     )
 
                     // Bob claims
-                    await controllerContract.call('claimToken', [LOAN_CCY_TOKEN, 0, 0], { caller : bob })
+                    await controllerContract.connect(bob).claimToken(LOAN_CCY_TOKEN, 0, 0)
                     console.log('Bob 0')
                     expect(await controllerContract.hasClaimedSnapshot(LOAN_CCY_TOKEN, 0, bob.address)).to.be.deep.equal(true)
 
@@ -4471,7 +4435,7 @@ describe('test BasePool', function () {
                     expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal('200')
 
                     // Charlie claims
-                    await controllerContract.call('claimToken', [LOAN_CCY_TOKEN, 0, 0], { caller : charlie })
+                    await controllerContract.connect(charlie).claimToken(LOAN_CCY_TOKEN, 0, 0)
                     console.log('Charlie 0')
                     expect(await controllerContract.hasClaimedSnapshot(LOAN_CCY_TOKEN, 0, charlie.address)).to.be.deep.equal(true)
 
@@ -4494,7 +4458,7 @@ describe('test BasePool', function () {
                     // Second snapshot claiming
 
                     // Bob claims
-                    await controllerContract.call('claimToken', [LOAN_CCY_TOKEN, 1, 1], { caller : bob })
+                    await controllerContract.connect(bob).claimToken(LOAN_CCY_TOKEN, 1, 1)
                     console.log('Bob 1')
                     expect(await controllerContract.hasClaimedSnapshot(LOAN_CCY_TOKEN, 1, bob.address)).to.be.deep.equal(true)
 
@@ -4515,7 +4479,7 @@ describe('test BasePool', function () {
                     expect(await bob.balance(LOAN_CCY_TOKEN)).to.be.deep.equal(String(200 + 600))
 
                     // Charlie claims
-                    await controllerContract.call('claimToken', [LOAN_CCY_TOKEN, 1, 1], { caller : charlie })
+                    await controllerContract.connect(charlie).claimToken(LOAN_CCY_TOKEN, 1, 1)
                     console.log('Charlie 1')
                     expect(await controllerContract.hasClaimedSnapshot(LOAN_CCY_TOKEN, 1, charlie.address)).to.be.deep.equal(true)
 
@@ -4551,10 +4515,10 @@ describe('test BasePool', function () {
                     expect(await controllerContract.getAccountSnapshot(bob.address, 0)).to.be.deep.equal(['50', '0', '0'])
 
                     // Bob claims
-                    await controllerContract.call('claimToken', [LOAN_CCY_TOKEN, 0, 0], { caller : bob })
+                    await controllerContract.connect(bob).claimToken(LOAN_CCY_TOKEN, 0, 0)
 
                     await expect(
-                        controllerContract.call('claimToken', [LOAN_CCY_TOKEN, 0, 0], { caller : bob })
+                        controllerContract.connect(bob).claimToken(LOAN_CCY_TOKEN, 0, 0)
                     ).to.be.eventually.rejectedWith('revert')
                     
                 })
@@ -4573,7 +4537,7 @@ describe('test BasePool', function () {
                     expect(await controllerContract.getAccountSnapshot(bob.address, 0)).to.be.deep.equal(['50', '0', '0'])
 
                     await expect(
-                        controllerContract.call('claimToken', [LOAN_CCY_TOKEN, 1, 0], { caller : bob })
+                        controllerContract.connect(bob).claimToken(LOAN_CCY_TOKEN, 1, 0)
                     ).to.be.eventually.rejectedWith('revert')
                 })
 
@@ -4591,7 +4555,7 @@ describe('test BasePool', function () {
                     expect(await controllerContract.getAccountSnapshot(bob.address, 0)).to.be.deep.equal(['50', '0', '0'])
 
                     await expect(
-                        controllerContract.call('claimToken', [LOAN_CCY_TOKEN, 0, 1], { caller : bob })
+                        controllerContract.connect(bob).claimToken(LOAN_CCY_TOKEN, 0, 1)
                     ).to.be.eventually.rejectedWith('revert')
                 })
 
@@ -4613,7 +4577,7 @@ describe('test BasePool', function () {
 
                     // accountSnapshot 1 exists, but it's not the correct snapshotIdx for claiming tokenSnapshot=0
                     await expect(
-                        controllerContract.call('claimToken', [LOAN_CCY_TOKEN, 0, 1], { caller : bob })
+                        controllerContract.connect(bob).claimToken(LOAN_CCY_TOKEN, 0, 1)
                     ).to.be.eventually.rejectedWith('revert')
                 })
 
@@ -4641,7 +4605,7 @@ describe('test BasePool', function () {
 
                     // accountSnapshot 0 exists, but it's not the correct snapshotIdx for claiming tokenSnapshot=1
                     await expect(
-                        controllerContract.call('claimToken', [LOAN_CCY_TOKEN, 1, 0], { caller : bob })
+                        controllerContract.connect(bob).claimToken(LOAN_CCY_TOKEN, 1, 0)
                     ).to.be.eventually.rejectedWith('revert')
                 })
 
@@ -4684,7 +4648,7 @@ describe('test BasePool', function () {
                                     // Should fail
                                     console.log('Testing failure with', i)
                                     await expect(
-                                        controllerContract.call('claimToken', [LOAN_CCY_TOKEN, 0, i], { caller : bob })
+                                        controllerContract.connect(bob).claimToken(LOAN_CCY_TOKEN, 0, i)
                                     ).to.be.eventually.rejectedWith('revert')
                                 }
                             }
@@ -4692,7 +4656,7 @@ describe('test BasePool', function () {
                             if (correctIndex != -1) {
                                 // Should succeed
                                 console.log('Testing success with', correctIndex)
-                                await controllerContract.call('claimToken', [LOAN_CCY_TOKEN, 0, correctIndex], { caller : bob })
+                                await controllerContract.connect(bob).claimToken(LOAN_CCY_TOKEN, 0, correctIndex)
                             }
                         })
                     }
@@ -5229,17 +5193,17 @@ describe('test BasePool', function () {
 
                     // Alice has 10% of the voting power
 
-                    await controllerContract.call('createProposal', [charlie.address, Actions.Whitelist, 150], { caller : alice })
+                    await controllerContract.connect(alice).createProposal(charlie.address, Actions.Whitelist, 150)
 
                     await checkQuery('poolWhitelisted', [charlie.address], [false], controllerContract)
 
-                    await controllerContract.call('vote', [0], {caller : alice })
-                    await controllerContract.call('vote', [0], {caller : bob })
+                    await controllerContract.connect(alice).vote(0)
+                    await controllerContract.connect(bob).vote(0)
 
                     // Not yet executed: the veto holder hasn't set its approval
                     await checkQuery('poolWhitelisted', [charlie.address], [false], controllerContract)
 
-                    await controllerContract.call('setVetoHolderApproval', [0, true], { caller : deployer})
+                    await controllerContract.connect(deployer).setVetoHolderApproval(0, true)
 
                     await checkQuery('poolWhitelisted', [charlie.address], [true], controllerContract)
 
@@ -5267,7 +5231,7 @@ describe('test BasePool', function () {
 
                     await checkQuery('rewardBalance', [dan.address], [reward], controllerContract)
 
-                    await controllerContract.call('collectReward', [false], { caller : dan })
+                    await controllerContract.connect(dan).collectReward(false)
                     expect(await dan.balance(VOTE_TOKEN)).to.be.deep.equal(String(reward))
                 })
 
@@ -5287,17 +5251,17 @@ describe('test BasePool', function () {
 
                     // Alice has 10% of the voting power
 
-                    await controllerContract.call('createProposal', [charlie.address, Actions.Whitelist, 150], { caller : alice })
+                    await controllerContract.connect(alice).createProposal(charlie.address, Actions.Whitelist, 150)
 
                     await checkQuery('poolWhitelisted', [charlie.address], [false], controllerContract)
 
-                    await controllerContract.call('vote', [0], {caller : alice })
-                    await controllerContract.call('vote', [0], {caller : bob })
+                    await controllerContract.connect(alice).vote(0)
+                    await controllerContract.connect(bob).vote(0)
 
                     // Not yet executed: the veto holder hasn't set its approval
                     await checkQuery('poolWhitelisted', [charlie.address], [false], controllerContract)
 
-                    await controllerContract.call('setVetoHolderApproval', [0, true], { caller : deployer})
+                    await controllerContract.connect(deployer).setVetoHolderApproval(0, true)
 
                     await checkQuery('poolWhitelisted', [charlie.address], [true], controllerContract)
 
@@ -5327,7 +5291,7 @@ describe('test BasePool', function () {
 
                     await setTime(123, controllerContract)
 
-                    await controllerContract.call('collectReward', [true], { caller : dan })
+                    await controllerContract.connect(dan).collectReward(true)
                     expect(await dan.balance(VOTE_TOKEN)).to.be.deep.equal(String(0))
                     await checkQuery('voteTokenBalance', [dan.address], [reward], controllerContract)
                     await checkQuery('lastDepositTimestamp', [dan.address], [123], controllerContract)
@@ -5344,7 +5308,7 @@ describe('test BasePool', function () {
                 it('fails to collect the reward when there is none', async function () {
                     const [alice] = await newUsers([])
                     await expect(
-                        controllerContract.call('collectReward', [true], { caller : alice })
+                        controllerContract.connect(alice).collectReward(true)
                     ).to.be.eventually.rejectedWith('revert')
                 })
             })
@@ -5354,7 +5318,7 @@ describe('test BasePool', function () {
                     const [alice] = await newUsers([])
 
                     await checkQuery('vetoHolder', [], [deployer.address], controllerContract)
-                    await controllerContract.call('transferVetoPower', [alice.address, false], { caller : deployer })
+                    await controllerContract.connect(deployer).transferVetoPower(alice.address, false)
                     await checkQuery('vetoHolder', [], [alice.address], controllerContract)
 
                     await checkEvents([{
@@ -5365,7 +5329,7 @@ describe('test BasePool', function () {
 
                 it('transfers the veto power to the zero-address', async function () {
                     await checkQuery('vetoHolder', [], [deployer.address], controllerContract)
-                    await controllerContract.call('transferVetoPower', [ZERO_ADDRESS, true], { caller : deployer })
+                    await controllerContract.connect(deployer).transferVetoPower(ZERO_ADDRESS, true)
                     await checkQuery('vetoHolder', [], [ZERO_ADDRESS], controllerContract)
 
                     await checkEvents([{
@@ -5380,19 +5344,19 @@ describe('test BasePool', function () {
                     const [alice, bob] = await newUsers([], [])
 
                     await expect(
-                        controllerContract.call('transferVetoPower', [bob.address, false], { caller : alice })
+                        controllerContract.connect(alice).transferVetoPower(bob.address, false)
                     ).to.be.eventually.rejectedWith('revert')
                 })
 
                 it('fails to transfer the veto power to itself', async function () {
                     await expect(
-                        controllerContract.call('transferVetoPower', [deployer.address, false], { caller : deployer })
+                        controllerContract.connect(deployer).transferVetoPower(deployer.address, false)
                     ).to.be.eventually.rejectedWith('revert')
                 })
 
                 it('fails to transfer the veto power to the zero-address without the correct flag', async function () {
                     await expect(
-                        controllerContract.call('transferVetoPower', [ZERO_ADDRESS, false], { caller : deployer })
+                        controllerContract.connect(deployer).transferVetoPower(ZERO_ADDRESS, false)
                     ).to.be.eventually.rejectedWith('revert')
                 })
             })
@@ -5408,9 +5372,9 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    await controllerContract.call('createProposal', [contract.address, Actions.Whitelist, 150], { caller : alice })
+                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Whitelist, 150)
 
-                    await controllerContract.call('setVetoHolderApproval', [0, true], { caller : deployer })
+                    await controllerContract.connect(deployer).setVetoHolderApproval(0, true)
                     expect(await controllerContract.getProposal(0)).to.be.deep.equal([contract.address, String(Actions.Whitelist), '0', deployer.address, false, '150'])
                     
                     await checkEvents([
@@ -5431,9 +5395,9 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    await controllerContract.call('createProposal', [contract.address, Actions.Whitelist, 150], { caller : alice })
+                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Whitelist, 150)
 
-                    await controllerContract.call('setVetoHolderApproval', [0, true], { caller : deployer })
+                    await controllerContract.connect(deployer).setVetoHolderApproval(0, true)
                     expect(await controllerContract.getProposal(0)).to.be.deep.equal([contract.address, String(Actions.Whitelist), '0', deployer.address, false, '150'])
 
                     await checkEvents([
@@ -5443,7 +5407,7 @@ describe('test BasePool', function () {
                         }
                     ], controllerContract)
 
-                    await controllerContract.call('setVetoHolderApproval', [0, false], { caller : deployer })
+                    await controllerContract.connect(deployer).setVetoHolderApproval(0, false)
 
                     await checkEvents([
                         {
@@ -5455,7 +5419,7 @@ describe('test BasePool', function () {
 
                 it('fails to approve a non-existent proposal', async function () {
                     await expect(
-                        controllerContract.call('setVetoHolderApproval', [0, true], { caller : deployer })
+                        controllerContract.connect(deployer).setVetoHolderApproval(0, true)
                     ).to.be.eventually.rejectedWith('revert')
                 })
 
@@ -5469,10 +5433,10 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    await controllerContract.call('createProposal', [contract.address, Actions.Whitelist, 150], { caller : alice })
+                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Whitelist, 150)
 
                     await expect(
-                        controllerContract.call('setVetoHolderApproval', [0, true], { caller : alice })
+                        controllerContract.connect(alice).setVetoHolderApproval(0, true)
                     ).to.be.eventually.rejectedWith('revert')
                 })
 
@@ -5486,10 +5450,10 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    await controllerContract.call('createProposal', [contract.address, Actions.Dewhitelist, 150], { caller : alice })
+                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Dewhitelist, 150)
 
                     await expect(
-                        controllerContract.call('setVetoHolderApproval', [0, true], { caller : deployer })
+                        controllerContract.connect(deployer).setVetoHolderApproval(0, true)
                     ).to.be.eventually.rejectedWith('revert')
                 })
 
@@ -5503,16 +5467,16 @@ describe('test BasePool', function () {
                         { caller : bob, tokenId : VOTE_TOKEN, amount : String(900)}
                     )
 
-                    await controllerContract.call('createProposal', [contract.address, Actions.Whitelist, 150], { caller : alice })
+                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Whitelist, 150)
 
-                    await controllerContract.call('setVetoHolderApproval', [0, true], { caller : deployer })
+                    await controllerContract.connect(deployer).setVetoHolderApproval(0, true)
 
-                    await controllerContract.call('vote', [0], {caller : alice })
-                    await controllerContract.call('vote', [0], {caller : bob })
+                    await controllerContract.connect(alice).vote(0)
+                    await controllerContract.connect(bob).vote(0)
 
                     
                     await expect(
-                        controllerContract.call('setVetoHolderApproval', [0, true], { caller : deployer })
+                        controllerContract.connect(deployer).setVetoHolderApproval(0, true)
                     ).to.be.eventually.rejectedWith('revert') 
                 })
             })
@@ -5532,17 +5496,17 @@ describe('test BasePool', function () {
 
                     // Alice has 10% of the voting power
 
-                    await controllerContract.call('createProposal', [contract.address, Actions.Whitelist, 150], { caller : alice })
+                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Whitelist, 150)
 
                     await checkQuery('poolWhitelisted', [contract.address], [false], controllerContract)
 
-                    await controllerContract.call('vote', [0], {caller : alice })
-                    await controllerContract.call('vote', [0], {caller : bob })
+                    await controllerContract.connect(alice).vote(0)
+                    await controllerContract.connect(bob).vote(0)
 
                     // Not yet executed: the veto holder hasn't set its approval
                     await checkQuery('poolWhitelisted', [contract.address], [false], controllerContract)
 
-                    await controllerContract.call('setVetoHolderApproval', [0, true], { caller : deployer})
+                    await controllerContract.connect(deployer).setVetoHolderApproval(0, true)
 
                     await checkQuery('poolWhitelisted', [contract.address], [true], controllerContract)
 
@@ -5573,9 +5537,9 @@ describe('test BasePool', function () {
 
                     // Alice has 10% of the voting power
 
-                    await controllerContract.call('createProposal', [contract.address, Actions.Whitelist, 150], { caller : alice })
+                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Whitelist, 150)
 
-                    await controllerContract.call('setVetoHolderApproval', [0, true], { caller : deployer})
+                    await controllerContract.connect(deployer).setVetoHolderApproval(0, true)
 
                     await checkEvents([
                         {
@@ -5587,8 +5551,8 @@ describe('test BasePool', function () {
                     // Not yet executed: the proposal hasn't passed yet
                     await checkQuery('poolWhitelisted', [contract.address], [false], controllerContract)
 
-                    await controllerContract.call('vote', [0], {caller : alice })
-                    await controllerContract.call('vote', [0], {caller : bob })
+                    await controllerContract.connect(alice).vote(0)
+                    await controllerContract.connect(bob).vote(0)
 
 
                     await checkQuery('poolWhitelisted', [contract.address], [true], controllerContract)
@@ -5622,17 +5586,17 @@ describe('test BasePool', function () {
 
                     // Alice has 10% of the voting power
 
-                    await controllerContract.call('createProposal', [contract.address, Actions.Whitelist, 150], { caller : alice })
+                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Whitelist, 150)
 
                     await checkQuery('poolWhitelisted', [contract.address], [false], controllerContract)
 
-                    await controllerContract.call('vote', [0], {caller : alice })
-                    await controllerContract.call('vote', [0], {caller : bob })
+                    await controllerContract.connect(alice).vote(0)
+                    await controllerContract.connect(bob).vote(0)
 
                     // Not yet executed: the veto holder hasn't set its approval
                     await checkQuery('poolWhitelisted', [contract.address], [false], controllerContract)
 
-                    await controllerContract.call('setVetoHolderApproval', [0, true], { caller : deployer})
+                    await controllerContract.connect(deployer).setVetoHolderApproval(0, true)
 
                     await checkQuery('poolWhitelisted', [contract.address], [true], controllerContract)
 
@@ -5648,12 +5612,12 @@ describe('test BasePool', function () {
                         }
                     ], controllerContract)
 
-                    await controllerContract.call('createProposal', [contract.address, Actions.Dewhitelist, 150], { caller : alice })
+                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Dewhitelist, 150)
 
                     await checkQuery('poolWhitelisted', [contract.address], [true], controllerContract)
 
-                    await controllerContract.call('vote', [1], {caller : alice })
-                    await controllerContract.call('vote', [1], {caller : bob })
+                    await controllerContract.connect(alice).vote(1)
+                    await controllerContract.connect(bob).vote(1)
 
                     await checkQuery('poolWhitelisted', [contract.address], [false], controllerContract)
 
@@ -5686,17 +5650,17 @@ describe('test BasePool', function () {
 
                     // Transfer veto power to the zero-address
                     await checkQuery('vetoHolder', [], [deployer.address], controllerContract)
-                    await controllerContract.call('transferVetoPower', [ZERO_ADDRESS, true], { caller : deployer })
+                    await controllerContract.connect(deployer).transferVetoPower(ZERO_ADDRESS, true)
                     await checkQuery('vetoHolder', [], [ZERO_ADDRESS], controllerContract)
 
                     // Alice has 10% of the voting power
 
-                    await controllerContract.call('createProposal', [contract.address, Actions.Whitelist, 150], { caller : alice })
+                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Whitelist, 150)
 
                     await checkQuery('poolWhitelisted', [contract.address], [false], controllerContract)
 
-                    await controllerContract.call('vote', [0], {caller : alice })
-                    await controllerContract.call('vote', [0], {caller : bob })
+                    await controllerContract.connect(alice).vote(0)
+                    await controllerContract.connect(bob).vote(0)
 
                     // Approval is not required, so it is immediately executed
                     await checkQuery('poolWhitelisted', [contract.address], [true], controllerContract)
@@ -5734,17 +5698,17 @@ describe('test BasePool', function () {
 
                     // Alice has 10% of the voting power
 
-                    await controllerContract.call('createProposal', [charlie.address, Actions.Whitelist, 150], { caller : alice })
+                    await controllerContract.connect(alice).createProposal(charlie.address, Actions.Whitelist, 150)
 
                     await checkQuery('poolWhitelisted', [charlie.address], [false], controllerContract)
 
-                    await controllerContract.call('vote', [0], {caller : alice })
-                    await controllerContract.call('vote', [0], {caller : bob })
+                    await controllerContract.connect(alice).vote(0)
+                    await controllerContract.connect(bob).vote(0)
 
                     // Not yet executed: the veto holder hasn't set its approval
                     await checkQuery('poolWhitelisted', [charlie.address], [false], controllerContract)
 
-                    await controllerContract.call('setVetoHolderApproval', [0, true], { caller : deployer})
+                    await controllerContract.connect(deployer).setVetoHolderApproval(0, true)
 
                     await checkQuery('poolWhitelisted', [charlie.address], [true], controllerContract)
 
@@ -5788,17 +5752,17 @@ describe('test BasePool', function () {
 
                     // Alice has 10% of the voting power
 
-                    await controllerContract.call('createProposal', [charlie.address, Actions.Whitelist, 150], { caller : alice })
+                    await controllerContract.connect(alice).createProposal(charlie.address, Actions.Whitelist, 150)
 
                     await checkQuery('poolWhitelisted', [charlie.address], [false], controllerContract)
 
-                    await controllerContract.call('vote', [0], {caller : alice })
-                    await controllerContract.call('vote', [0], {caller : bob })
+                    await controllerContract.connect(alice).vote(0)
+                    await controllerContract.connect(bob).vote(0)
 
                     // Not yet executed: the veto holder hasn't set its approval
                     await checkQuery('poolWhitelisted', [charlie.address], [false], controllerContract)
 
-                    await controllerContract.call('setVetoHolderApproval', [0, true], { caller : deployer})
+                    await controllerContract.connect(deployer).setVetoHolderApproval(0, true)
 
                     await checkQuery('poolWhitelisted', [charlie.address], [true], controllerContract)
 
@@ -5857,17 +5821,17 @@ describe('test BasePool', function () {
 
                     // Alice has 10% of the voting power
 
-                    await controllerContract.call('createProposal', [charlie.address, Actions.Whitelist, 150], { caller : alice })
+                    await controllerContract.connect(alice).createProposal(charlie.address, Actions.Whitelist, 150)
 
                     await checkQuery('poolWhitelisted', [charlie.address], [false], controllerContract)
 
-                    await controllerContract.call('vote', [0], {caller : alice })
-                    await controllerContract.call('vote', [0], {caller : bob })
+                    await controllerContract.connect(alice).vote(0)
+                    await controllerContract.connect(bob).vote(0)
 
                     // Not yet executed: the veto holder hasn't set its approval
                     await checkQuery('poolWhitelisted', [charlie.address], [false], controllerContract)
 
-                    await controllerContract.call('setVetoHolderApproval', [0, true], { caller : deployer})
+                    await controllerContract.connect(deployer).setVetoHolderApproval(0, true)
 
                     await checkQuery('poolWhitelisted', [charlie.address], [true], controllerContract)
 
@@ -6245,13 +6209,10 @@ describe('test BasePool', function () {
 
             await setTime(time2)
 
-            await contract.call('removeLiquidity',
-                [
+            await contract.connect(alice).removeLiquidity(
                     alice.address, // onBehalfOf
                     String(sharesRemoved2)
-                ],
-                { caller : alice }
-            )
+                )
 
             await checkQuery('lastRewardTimestamp', [alice.address], [time2])
             await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity2])
@@ -6261,13 +6222,10 @@ describe('test BasePool', function () {
 
             await setTime(time3)
 
-            await contract.call('removeLiquidity', 
-                [
+            await contract.connect(alice).removeLiquidity(
                     alice.address, // onBehalfOf
                     sharesRemoved3
-                ],
-                { caller : alice }
-            )
+                )
 
             console.log(await getPastEvents(contract, 'allEvents', {fromHeight: 0, toHeight: 0}))
 
@@ -6548,12 +6506,9 @@ describe('test BasePool', function () {
 
             await setTime(time2)
 
-            await contract.call('forceRewardUpdate', 
-                [
+            await contract.connect(alice).forceRewardUpdate(
                     alice.address, // onBehalfOf
-                ],
-                { caller : alice }
-            )
+                )
 
             await checkQuery('lastRewardTimestamp', [alice.address], [time2])
             await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity2])
@@ -6577,7 +6532,7 @@ describe('test BasePool', function () {
 
             const bits = approvalBits(['forceRewardUpdate'])
             console.log('Bits:', bits)
-            await contract.call('setApprovals', [bob.address, bits], { caller : alice })
+            await contract.connect(alice).setApprovals(bob.address, bits)
 
             console.log('Approved')
 
@@ -6605,12 +6560,9 @@ describe('test BasePool', function () {
 
             await setTime(time2)
 
-            await contract.call('forceRewardUpdate', 
-                [
+            await contract.connect(bob).forceRewardUpdate(
                     alice.address, // onBehalfOf
-                ],
-                { caller : bob }
-            )
+                )
 
             console.log('Forced update')
 
@@ -6638,7 +6590,7 @@ describe('test BasePool', function () {
 
             const bits = approvalBits(['repay', 'addLiquidity', 'removeLiquidity', 'claim', 'resendRewardRequest'])
             console.log('Bits:', bits)
-            await contract.call('setApprovals', [bob.address, bits], { caller : alice })
+            await contract.connect(alice).setApprovals(bob.address, bits)
 
             const time1 = 17
             const liquidity1 = 321
@@ -6657,12 +6609,9 @@ describe('test BasePool', function () {
             await setTime(time2)
 
             await expect(
-                contract.call('forceRewardUpdate', 
-                    [
+                contract.connect(bob).forceRewardUpdate(
                         alice.address, // onBehalfOf
-                    ],
-                    { caller : bob }
-                )
+                    )
             ).to.be.eventually.rejectedWith('revert')
         })
 
@@ -6775,13 +6724,10 @@ describe('test BasePool', function () {
             console.log(await contract.query('getPoolInfo', []))
             console.log('Removing', sharesRemovedAlice, 'shares and', liquidityRemovedAlice, 'liquidity')
 
-            await contract.call('removeLiquidity',
-                [
+            await contract.connect(alice).removeLiquidity(
                     alice.address,
                     sharesRemovedAlice
-                ],
-                { caller : alice }
-            )
+                )
 
             totalRewardAlice += Math.floor((171 - lastRewardTimestampAlice) * coefficient * trackedLiquidityAlice)
             liquidityAlice -= liquidityRemovedAlice
@@ -6807,12 +6753,9 @@ describe('test BasePool', function () {
 
             await setTime(313)
 
-            await contract.call('forceRewardUpdate',
-                [
+            await contract.connect(alice).forceRewardUpdate(
                     alice.address
-                ],
-                { caller : alice }
-            )
+                )
             totalRewardAlice += Math.floor((313 - lastRewardTimestampAlice) * coefficient * trackedLiquidityAlice)
             lastRewardTimestampAlice = 313
 
@@ -6843,12 +6786,10 @@ describe('test BasePool', function () {
             const sharesRemovedBob = Math.floor(sharesBob * 0.093)
             const liquidityRemovedBob = Math.floor(sharesRemovedBob / totalShares() * (totalLiquidity() - MIN_LIQUIDITY))
 
-            await contract.call('removeLiquidity',
-                [
+            await contract.connect(bob).removeLiquidity(
                     bob.address,
                     sharesRemovedBob
-                ], { caller : bob }
-            )
+                )
             totalRewardBob += Math.floor((563 - lastRewardTimestampBob) * coefficient * trackedLiquidityBob)
             liquidityBob -= liquidityRemovedBob
             trackedLiquidityBob -= liquidityRemovedBob
@@ -6861,11 +6802,9 @@ describe('test BasePool', function () {
 
             await setTime(569)
 
-            await contract.call('forceRewardUpdate', 
-                [
+            await contract.connect(bob).forceRewardUpdate(
                     bob.address
-                ], { caller: bob }
-            )
+                )
             totalRewardBob += Math.floor((569 - lastRewardTimestampBob) * coefficient * trackedLiquidityBob)
             lastRewardTimestampBob = 569
 
@@ -6930,7 +6869,7 @@ describe('test BasePool', function () {
                 await setTime(time2)
 
                 // Disable Controller
-                await controllerContract.call('setDisabled', [true], { caller : alice })
+                await controllerContract.connect(alice).setDisabled(true)
     
                 await contract.connect(alice).addLiquidity(alice.address, String(liquidity2 - liquidity1) ,10000,0)
     
@@ -6942,14 +6881,14 @@ describe('test BasePool', function () {
 
 
                 // Re-enable the Controller
-                await controllerContract.call('setDisabled', [false], { caller : alice })
+                await controllerContract.connect(alice).setDisabled(false)
 
                 await checkQuery('receivedReward', [contract.address, 0], [false], controllerContract)
                 await checkQuery('rewardBalance', [alice.address], [0], controllerContract)
 
 
                 // Re-send the request
-                await contract.call('resendRewardRequest', [0], { caller : alice })
+                await contract.connect(alice).resendRewardRequest(0)
     
                 await checkQuery('receivedReward', [contract.address, 0], [true], controllerContract)
                 await checkQuery('rewardBalance', [alice.address], [reward2], controllerContract)
@@ -6960,7 +6899,7 @@ describe('test BasePool', function () {
 
                 const bits = approvalBits(['resendRewardRequest'])
                 console.log('Bits:', bits)
-                await contract.call('setApprovals', [bob.address, bits], { caller : alice })
+                await contract.connect(alice).setApprovals(bob.address, bits)
     
                 const coefficient = 5.67
     
@@ -6983,7 +6922,7 @@ describe('test BasePool', function () {
                 await setTime(time2)
 
                 // Disable Controller
-                await controllerContract.call('setDisabled', [true], { caller : alice })
+                await controllerContract.connect(alice).setDisabled(true)
     
                 await contract.connect(alice).addLiquidity(alice.address, String(liquidity2 - liquidity1) ,10000,0)
     
@@ -6995,14 +6934,14 @@ describe('test BasePool', function () {
 
 
                 // Re-enable the Controller
-                await controllerContract.call('setDisabled', [false], { caller : alice })
+                await controllerContract.connect(alice).setDisabled(false)
 
                 await checkQuery('receivedReward', [contract.address, 0], [false], controllerContract)
                 await checkQuery('rewardBalance', [alice.address], [0], controllerContract)
 
 
                 // Re-send the request
-                await contract.call('resendRewardRequest', [0], { caller : bob })
+                await contract.connect(bob).resendRewardRequest(0)
     
                 await checkQuery('receivedReward', [contract.address, 0], [true], controllerContract)
                 await checkQuery('rewardBalance', [alice.address], [reward2], controllerContract)
@@ -7040,7 +6979,7 @@ describe('test BasePool', function () {
 
 
                 // Re-send the request
-                await contract.call('resendRewardRequest', [0], { caller : alice })
+                await contract.connect(alice).resendRewardRequest(0)
     
     
                 // Nothing happens
@@ -7073,7 +7012,7 @@ describe('test BasePool', function () {
 
 
                 await expect(
-                    contract.call('resendRewardRequest', [0], { caller : alice })
+                    contract.connect(alice).resendRewardRequest(0)
                 ).to.be.eventually.rejectedWith('revert')
             })
 
@@ -7082,7 +7021,7 @@ describe('test BasePool', function () {
 
                 const bits = approvalBits(['repay', 'addLiquidity', 'removeLiquidity', 'claim', 'forceRewardUpdate'])
                 console.log('Bits:', bits)
-                await contract.call('setApprovals', [bob.address, bits], { caller : alice })
+                await contract.connect(alice).setApprovals(bob.address, bits)
     
                 const coefficient = 5.67
     
@@ -7107,7 +7046,7 @@ describe('test BasePool', function () {
                 await setTime(time2)
 
                 // Disable Controller
-                await controllerContract.call('setDisabled', [true], { caller : alice })
+                await controllerContract.connect(alice).setDisabled(true)
     
                 await contract.connect(alice).addLiquidity(alice.address, String(liquidity2 - liquidity1) ,10000,0)
     
@@ -7119,7 +7058,7 @@ describe('test BasePool', function () {
 
 
                 // Re-enable the Controller
-                await controllerContract.call('setDisabled', [false], { caller : alice })
+                await controllerContract.connect(alice).setDisabled(false)
 
                 await checkQuery('receivedReward', [contract.address, 0], [false], controllerContract)
                 await checkQuery('rewardBalance', [alice.address], [0], controllerContract)
@@ -7127,7 +7066,7 @@ describe('test BasePool', function () {
 
                 // Re-send the request
                 await expect(
-                    contract.call('resendRewardRequest', [0], { caller : bob })
+                    contract.connect(bob).resendRewardRequest(0)
                 ).to.be.eventually.rejectedWith('revert')
             })
         })
