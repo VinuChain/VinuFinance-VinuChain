@@ -4772,7 +4772,7 @@ describe('test BasePool', function () {
                     const [alice] = await newUsers([[VOTE_TOKEN, 1000]])
 
                     await checkQuery('rewardSupply', [], [String(0)], controllerContract)
-                    await controllerContract.call('depositRewardSupply', [], { caller : alice, tokenId : VOTE_TOKEN, amount : '1000' })
+                    await controllerContract.connect(alice).depositRewardSupply('1000')
                     await checkQuery('rewardSupply', [], [String(1000)], controllerContract)
                 })
 
@@ -4780,7 +4780,7 @@ describe('test BasePool', function () {
                     const [alice] = await newUsers([[LOAN_CCY_TOKEN, 1000]])
 
                     await expect(
-                        controllerContract.call('depositRewardSupply', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '1000' })
+                        controllerContract.connect(alice).depositRewardSupply('1000')
                     ).to.be.eventually.rejectedWith('revert')
                 })
             })
@@ -4789,7 +4789,7 @@ describe('test BasePool', function () {
                 it('collects the reward (without depositing)', async function () {
                     const [alice, bob, charlie, dan] = await newUsers([[VOTE_TOKEN, 20000000]], [[VOTE_TOKEN, 1000]], [], [])
                     
-                    await controllerContract.call('depositRewardSupply', [], { caller : alice, tokenId : VOTE_TOKEN, amount : '10000000' })
+                    await controllerContract.connect(alice).depositRewardSupply('10000000')
 
                     await controllerContract.connect(alice).depositVoteToken(String(100))
                     await controllerContract.connect(bob).depositVoteToken(String(900))
@@ -4843,7 +4843,7 @@ describe('test BasePool', function () {
                 it('collects the reward (with depositing)', async function () {
                     const [alice, bob, charlie, dan] = await newUsers([[VOTE_TOKEN, 20000000]], [[VOTE_TOKEN, 1000]], [], [])
                     
-                    await controllerContract.call('depositRewardSupply', [], { caller : alice, tokenId : VOTE_TOKEN, amount : '10000000' })
+                    await controllerContract.connect(alice).depositRewardSupply('10000000')
 
                     await controllerContract.connect(alice).depositVoteToken(String(100))
                     await controllerContract.connect(bob).depositVoteToken(String(900))
@@ -5250,7 +5250,7 @@ describe('test BasePool', function () {
                 it('requests token distribution for an address', async function () {
                     const [alice, bob, charlie, dan] = await newUsers([[VOTE_TOKEN, 20000000]], [[VOTE_TOKEN, 1000]], [], [])
                     
-                    await controllerContract.call('depositRewardSupply', [], { caller : alice, tokenId : VOTE_TOKEN, amount : '10000000' })
+                    await controllerContract.connect(alice).depositRewardSupply('10000000')
 
                     await controllerContract.connect(alice).depositVoteToken(String(100))
                     await controllerContract.connect(bob).depositVoteToken(String(900))
@@ -5300,7 +5300,7 @@ describe('test BasePool', function () {
                 it('fails to request token distribution with the same idx twice', async function () {
                     const [alice, bob, charlie, dan] = await newUsers([[VOTE_TOKEN, 20000000]], [[VOTE_TOKEN, 1000]], [], [])
                     
-                    await controllerContract.call('depositRewardSupply', [], { caller : alice, tokenId : VOTE_TOKEN, amount : '10000000' })
+                    await controllerContract.connect(alice).depositRewardSupply('10000000')
 
                     await controllerContract.connect(alice).depositVoteToken(String(100))
                     await controllerContract.connect(bob).depositVoteToken(String(900))
@@ -5347,7 +5347,7 @@ describe('test BasePool', function () {
                 it('fails to request token distribution without being whitelisted', async function () {
                     const [alice, charlie, dan] = await newUsers([[VOTE_TOKEN, 20000000]], [], [])
                     
-                    await controllerContract.call('depositRewardSupply', [], { caller : alice, tokenId : VOTE_TOKEN, amount : '10000000' })
+                    await controllerContract.connect(alice).depositRewardSupply('10000000')
 
                     const liquidity = 452
                     const duration = 3691
@@ -5365,7 +5365,7 @@ describe('test BasePool', function () {
                     const [alice, bob, charlie, dan] = await newUsers([[VOTE_TOKEN, 20000000]], [[VOTE_TOKEN, 1000]], [], [])
                     
                     // 1M instead of 10M
-                    await controllerContract.call('depositRewardSupply', [], { caller : alice, tokenId : VOTE_TOKEN, amount : '1000000' })
+                    await controllerContract.connect(alice).depositRewardSupply('1000000')
 
                     await controllerContract.connect(alice).depositVoteToken(String(100))
                     await controllerContract.connect(bob).depositVoteToken(String(900))
