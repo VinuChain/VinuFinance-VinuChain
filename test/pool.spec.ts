@@ -3996,7 +3996,7 @@ describe('test BasePool', function () {
                     await setTime(19, controllerContract)
                     await controllerContract.connect(alice).depositVoteToken(String(50))
 
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '100' })
+                    await controllerContract.connect(alice).depositRevenue(COLL_CCY_TOKEN, '100')
 
                     await checkEvents([
                         {
@@ -4018,16 +4018,16 @@ describe('test BasePool', function () {
                     await setTime(19, controllerContract)
                     await controllerContract.connect(alice).depositVoteToken(String(50))
 
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '25' })
+                    await controllerContract.connect(alice).depositRevenue(COLL_CCY_TOKEN, '25')
                     expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('0')
                     
                     await controllerContract.connect(alice).depositVoteToken(String(7))
 
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '100' })
+                    await controllerContract.connect(alice).depositRevenue(COLL_CCY_TOKEN, '100')
                     expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('100')
                     
                     await setTime(118, controllerContract)
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '200' })
+                    await controllerContract.connect(alice).depositRevenue(COLL_CCY_TOKEN, '200')
                     expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('300')
 
                     expect(await controllerContract.numTokenSnapshots(COLL_CCY_TOKEN)).to.be.deep.equal('1')
@@ -4039,17 +4039,17 @@ describe('test BasePool', function () {
                     await setTime(19, controllerContract)
                     await controllerContract.connect(alice).depositVoteToken(String(50))
 
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '25' })
+                    await controllerContract.connect(alice).depositRevenue(COLL_CCY_TOKEN, '25')
                     expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('0')
                     
                     await controllerContract.connect(alice).depositVoteToken(String(7))
 
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '100' })
+                    await controllerContract.connect(alice).depositRevenue(COLL_CCY_TOKEN, '100')
                     expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('100')
 
                     await setTime(119, controllerContract)
 
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '1' })
+                    await controllerContract.connect(alice).depositRevenue(COLL_CCY_TOKEN, '1')
                     expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('0')
 
                     
@@ -4063,12 +4063,12 @@ describe('test BasePool', function () {
                     await setTime(19, controllerContract)
                     await controllerContract.connect(alice).depositVoteToken(String(50))
 
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '25' })
+                    await controllerContract.connect(alice).depositRevenue(COLL_CCY_TOKEN, '25')
                     expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('0')
                     
                     await controllerContract.connect(alice).depositVoteToken(String(7))
 
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '100' })
+                    await controllerContract.connect(alice).depositRevenue(COLL_CCY_TOKEN, '100')
                     expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('100')
                     
                     await setTime(118, controllerContract)
@@ -4083,12 +4083,12 @@ describe('test BasePool', function () {
                     await setTime(19, controllerContract)
                     await controllerContract.connect(alice).depositVoteToken(String(50))
 
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '25' })
+                    await controllerContract.connect(alice).depositRevenue(COLL_CCY_TOKEN, '25')
                     expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('0')
                     
                     await controllerContract.connect(alice).depositVoteToken(String(7))
 
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '100' })
+                    await controllerContract.connect(alice).depositRevenue(COLL_CCY_TOKEN, '100')
                     expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('100')
 
                     await setTime(119, controllerContract)
@@ -4106,11 +4106,11 @@ describe('test BasePool', function () {
                     await setTime(19, controllerContract)
                     await controllerContract.connect(alice).depositVoteToken(String(50))
 
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '25' })
+                    await controllerContract.connect(alice).depositRevenue(COLL_CCY_TOKEN, '25')
                     expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('0')
 
                     await setTime(29, controllerContract)
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '14' })
+                    await controllerContract.connect(alice).depositRevenue(LOAN_CCY_TOKEN, '14')
                     expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('0')
                     expect(await controllerContract.currentRevenue(LOAN_CCY_TOKEN)).to.be.deep.equal('0')
 
@@ -4129,8 +4129,8 @@ describe('test BasePool', function () {
                     expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(['50', '14', '0', '29', '0'])
 
                     // Doesn't trigger anything
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '100' })
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '100' })
+                    await controllerContract.connect(alice).depositRevenue(COLL_CCY_TOKEN, '100')
+                    await controllerContract.connect(alice).depositRevenue(LOAN_CCY_TOKEN, '100')
                     expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('100')
                     expect(await controllerContract.currentRevenue(LOAN_CCY_TOKEN)).to.be.deep.equal('100')
 
@@ -4141,8 +4141,8 @@ describe('test BasePool', function () {
 
                     // Late enough for COLL to trigger (but not LOAN)
                     await setTime(119, controllerContract)
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '1' })
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2' })
+                    await controllerContract.connect(alice).depositRevenue(COLL_CCY_TOKEN, '1')
+                    await controllerContract.connect(alice).depositRevenue(LOAN_CCY_TOKEN, '2')
                     expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('0')
                     expect(await controllerContract.currentRevenue(LOAN_CCY_TOKEN)).to.be.deep.equal('102')
 
@@ -4154,8 +4154,8 @@ describe('test BasePool', function () {
 
                     // Late enough for LOAN to trigger (but COLL has already been triggered)
                     await setTime(129, controllerContract)
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : COLL_CCY_TOKEN, amount : '3' })
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '5' })
+                    await controllerContract.connect(alice).depositRevenue(COLL_CCY_TOKEN, '3')
+                    await controllerContract.connect(alice).depositRevenue(LOAN_CCY_TOKEN, '5')
                     expect(await controllerContract.currentRevenue(COLL_CCY_TOKEN)).to.be.deep.equal('3')
                     expect(await controllerContract.currentRevenue(LOAN_CCY_TOKEN)).to.be.deep.equal('0')
 
@@ -4176,7 +4176,7 @@ describe('test BasePool', function () {
                     await controllerContract.connect(charlie).depositVoteToken(String(450))
                     // Bob now owns 10%, Charlie 90%
 
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
+                    await controllerContract.connect(alice).depositRevenue(LOAN_CCY_TOKEN, '2000')
                     // Snapshot has been taken
                     expect(await controllerContract.numTokenSnapshots(LOAN_CCY_TOKEN)).to.be.deep.equal('1')
                     expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(['500', '2000', '0', '0', '2'])
@@ -4232,7 +4232,7 @@ describe('test BasePool', function () {
                     await controllerContract.connect(charlie).depositVoteToken(String(450))
                     // Bob now owns 10%, Charlie 90%
 
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
+                    await controllerContract.connect(alice).depositRevenue(LOAN_CCY_TOKEN, '2000')
                     // Snapshot has been taken at time 0
 
                     expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(
@@ -4247,7 +4247,7 @@ describe('test BasePool', function () {
 
                     await setTime(100, controllerContract)
 
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '3000' })
+                    await controllerContract.connect(alice).depositRevenue(LOAN_CCY_TOKEN, '3000')
                     expect(await controllerContract.numTokenSnapshots(LOAN_CCY_TOKEN)).to.be.deep.equal('2')
 
                     // Snapshot has been taken at time 100
@@ -4348,7 +4348,7 @@ describe('test BasePool', function () {
 
                     await controllerContract.connect(bob).depositVoteToken(String(50))
 
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
+                    await controllerContract.connect(alice).depositRevenue(LOAN_CCY_TOKEN, '2000')
                     // Snapshot has been taken
                     expect(await controllerContract.numTokenSnapshots(LOAN_CCY_TOKEN)).to.be.deep.equal('1')
                     expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(['50', '2000', '0', '0', '1'])
@@ -4368,7 +4368,7 @@ describe('test BasePool', function () {
 
                     await controllerContract.connect(bob).depositVoteToken(String(50))
 
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
+                    await controllerContract.connect(alice).depositRevenue(LOAN_CCY_TOKEN, '2000')
                     // Snapshot has been taken
                     expect(await controllerContract.numTokenSnapshots(LOAN_CCY_TOKEN)).to.be.deep.equal('1')
                     expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(['50', '2000', '0', '0', '1'])
@@ -4384,7 +4384,7 @@ describe('test BasePool', function () {
 
                     await controllerContract.connect(bob).depositVoteToken(String(50))
 
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
+                    await controllerContract.connect(alice).depositRevenue(LOAN_CCY_TOKEN, '2000')
                     // Snapshot has been taken
                     expect(await controllerContract.numTokenSnapshots(LOAN_CCY_TOKEN)).to.be.deep.equal('1')
                     expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(['50', '2000', '0', '0', '1'])
@@ -4400,14 +4400,14 @@ describe('test BasePool', function () {
 
                     await controllerContract.connect(bob).depositVoteToken(String(50))
 
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
+                    await controllerContract.connect(alice).depositRevenue(LOAN_CCY_TOKEN, '2000')
                     // Snapshot has been taken
                     expect(await controllerContract.numTokenSnapshots(LOAN_CCY_TOKEN)).to.be.deep.equal('1')
                     expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(['50', '2000', '0', '0', '1'])
                     expect(await controllerContract.getAccountSnapshot(bob.address, 0)).to.be.deep.equal(['50', '0', '0'])
 
                     await setTime(100, controllerContract)
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
+                    await controllerContract.connect(alice).depositRevenue(LOAN_CCY_TOKEN, '2000')
 
                     // accountSnapshot 1 exists, but it's not the correct snapshotIdx for claiming tokenSnapshot=0
                     await expect(
@@ -4420,7 +4420,7 @@ describe('test BasePool', function () {
 
                     await controllerContract.connect(bob).depositVoteToken(String(50))
 
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
+                    await controllerContract.connect(alice).depositRevenue(LOAN_CCY_TOKEN, '2000')
                     // Snapshot has been taken
                     expect(await controllerContract.numTokenSnapshots(LOAN_CCY_TOKEN)).to.be.deep.equal('1')
                     expect(await controllerContract.getTokenSnapshot(LOAN_CCY_TOKEN, 0)).to.be.deep.equal(['50', '2000', '0', '0', '1'])
@@ -4430,7 +4430,7 @@ describe('test BasePool', function () {
                     await controllerContract.connect(bob).depositVoteToken(String(50))
 
                     await setTime(100, controllerContract)
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
+                    await controllerContract.connect(alice).depositRevenue(LOAN_CCY_TOKEN, '2000')
 
 
                     // accountSnapshot 0 exists, but it's not the correct snapshotIdx for claiming tokenSnapshot=1
@@ -4463,7 +4463,7 @@ describe('test BasePool', function () {
                             // @ts-ignore
                             for (const action of actions) {
                                 if (action == 'r') {
-                                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '1000' })
+                                    await controllerContract.connect(alice).depositRevenue(LOAN_CCY_TOKEN, '1000')
                                 } else if (action == 'v') {
                                     await controllerContract.connect(bob).depositVoteToken('1')
                                 } else {
@@ -4501,7 +4501,7 @@ describe('test BasePool', function () {
                     // Bob has 10%, Charlie has 90%
 
                     // Take a token snapshot
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
+                    await controllerContract.connect(alice).depositRevenue(LOAN_CCY_TOKEN, '2000')
                     
                     await checkQuery('numTokenSnapshots', [LOAN_CCY_TOKEN], [1], controllerContract)
                     await checkQuery('getAccountSnapshot', [bob.address, 0], [50, 0, 0], controllerContract)
@@ -4516,7 +4516,7 @@ describe('test BasePool', function () {
                     await setTime(100, controllerContract)
 
                     // Take a token snapshot
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '3000' })
+                    await controllerContract.connect(alice).depositRevenue(LOAN_CCY_TOKEN, '3000')
 
                     await checkQuery('numTokenSnapshots', [LOAN_CCY_TOKEN], [2], controllerContract)
                     await checkQuery('getAccountSnapshot', [bob.address, 0], [50, 0, 0], controllerContract)
@@ -4608,7 +4608,7 @@ describe('test BasePool', function () {
                     // Bob has 10%, Charlie has 90%
 
                     // Take a token snapshot
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
+                    await controllerContract.connect(alice).depositRevenue(LOAN_CCY_TOKEN, '2000')
                     
                     await checkQuery('numTokenSnapshots', [LOAN_CCY_TOKEN], [1], controllerContract)
                     await checkQuery('getAccountSnapshot', [bob.address, 0], [50, 0, 0], controllerContract)
@@ -4623,7 +4623,7 @@ describe('test BasePool', function () {
                     await setTime(100, controllerContract)
 
                     // Take a token snapshot
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '3000' })
+                    await controllerContract.connect(alice).depositRevenue(LOAN_CCY_TOKEN, '3000')
 
                     await checkQuery('numTokenSnapshots', [LOAN_CCY_TOKEN], [2], controllerContract)
                     await checkQuery('getAccountSnapshot', [bob.address, 0], [50, 0, 0], controllerContract)
@@ -4737,7 +4737,7 @@ describe('test BasePool', function () {
                     // Bob has 10%, Charlie has 90%
 
                     // Take a token snapshot
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
+                    await controllerContract.connect(alice).depositRevenue(LOAN_CCY_TOKEN, '2000')
                     
                     await checkQuery('numTokenSnapshots', [LOAN_CCY_TOKEN], [1], controllerContract)
                     await checkQuery('getAccountSnapshot', [bob.address, 0], [50, 0, 0], controllerContract)
@@ -4752,7 +4752,7 @@ describe('test BasePool', function () {
                     await setTime(100, controllerContract)
 
                     // Take a token snapshot
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '3000' })
+                    await controllerContract.connect(alice).depositRevenue(LOAN_CCY_TOKEN, '3000')
 
                     await checkQuery('numTokenSnapshots', [LOAN_CCY_TOKEN], [2], controllerContract)
                     await checkQuery('getAccountSnapshot', [bob.address, 0], [50, 0, 0], controllerContract)
@@ -4800,7 +4800,7 @@ describe('test BasePool', function () {
                     // Bob has 10%, Charlie has 90%
 
                     // Take a token snapshot
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
+                    await controllerContract.connect(alice).depositRevenue(LOAN_CCY_TOKEN, '2000')
                     
                     await checkQuery('numTokenSnapshots', [LOAN_CCY_TOKEN], [1], controllerContract)
                     await checkQuery('getAccountSnapshot', [bob.address, 0], [50, 0, 0], controllerContract)
@@ -4815,7 +4815,7 @@ describe('test BasePool', function () {
                     await setTime(100, controllerContract)
 
                     // Take a token snapshot
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '3000' })
+                    await controllerContract.connect(alice).depositRevenue(LOAN_CCY_TOKEN, '3000')
 
                     await checkQuery('numTokenSnapshots', [LOAN_CCY_TOKEN], [2], controllerContract)
                     await checkQuery('getAccountSnapshot', [bob.address, 0], [50, 0, 0], controllerContract)
@@ -4845,7 +4845,7 @@ describe('test BasePool', function () {
                     // Bob has 10%, Charlie has 90%
 
                     // Take a token snapshot
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
+                    await controllerContract.connect(alice).depositRevenue(LOAN_CCY_TOKEN, '2000')
                     
                     await checkQuery('numTokenSnapshots', [LOAN_CCY_TOKEN], [1], controllerContract)
                     await checkQuery('getAccountSnapshot', [bob.address, 0], [50, 0, 0], controllerContract)
@@ -4860,7 +4860,7 @@ describe('test BasePool', function () {
                     await setTime(100, controllerContract)
 
                     // Take a token snapshot
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '3000' })
+                    await controllerContract.connect(alice).depositRevenue(LOAN_CCY_TOKEN, '3000')
 
                     await checkQuery('numTokenSnapshots', [LOAN_CCY_TOKEN], [2], controllerContract)
                     await checkQuery('getAccountSnapshot', [bob.address, 0], [50, 0, 0], controllerContract)
@@ -4890,7 +4890,7 @@ describe('test BasePool', function () {
                     // Bob has 10%, Charlie has 90%
 
                     // Take a token snapshot
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' })
+                    await controllerContract.connect(alice).depositRevenue(LOAN_CCY_TOKEN, '2000')
                     
                     await checkQuery('numTokenSnapshots', [LOAN_CCY_TOKEN], [1], controllerContract)
                     await checkQuery('getAccountSnapshot', [bob.address, 0], [50, 0, 0], controllerContract)
@@ -4905,7 +4905,7 @@ describe('test BasePool', function () {
                     await setTime(100, controllerContract)
 
                     // Take a token snapshot
-                    await controllerContract.call('depositRevenue', [], { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '3000' })
+                    await controllerContract.connect(alice).depositRevenue(LOAN_CCY_TOKEN, '3000')
 
                     await checkQuery('numTokenSnapshots', [LOAN_CCY_TOKEN], [2], controllerContract)
                     await checkQuery('getAccountSnapshot', [bob.address, 0], [50, 0, 0], controllerContract)
