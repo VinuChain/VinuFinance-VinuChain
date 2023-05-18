@@ -1,5 +1,5 @@
 // NOTE: Queries are authomatically retried and don't fail (while calls do), so some query tests have been written as call tests.
-import * as fs from "fs/promises";
+
 //import { describe } from "mocha";
 import { BigNumber } from "@ethersproject/bignumber";
 
@@ -129,7 +129,7 @@ const checkQuery = async (methodName : string, params : Array<any>, expected : A
         return String(x)
     }
     const parsedExpected = serialize(expected) //expected.map(x => String(x))
-    expect(await referenceContract[methodName](params)).to.be.deep.equal(parsedExpected)
+    expect(await referenceContract[methodName](...params)).to.be.deep.equal(parsedExpected)
 }
 
 function wait(milliseconds : number){
@@ -158,21 +158,26 @@ async function contractReceiveAll(referenceContract : ethers.Contract) {
 }
 
 const newUsers = async (...tokenInfos : Array<Array<Array<String | Number>>>) => {
-    const users : Array<vite.UserAccount> = []
+    const users : Array<any> = []
     for (const tokenInfo of tokenInfos) {
-        const user = vite.newAccount(config.networks.local.mnemonic, mnemonicCounter++, provider)
+        const [ user ] = await ethers.getSigners() //vite.newAccount(config.networks.local.mnemonic, mnemonicCounter++, provider)
 
-        if (tokenInfo.length == 0) {
-            // Important: Accounts cannot interact with the contract if they have a block
-            // height of 1, so we perform a dummy transaction
-            await deployer.sendToken(user.address, '0')
-        } else {
-            for (const tokenPair of tokenInfo) {
-                await deployer.sendToken(user.address, String(tokenPair[1]), String(tokenPair[0]))
+        const currentTokens = [loanCcyTokenContract, collCcyTokenContract, voteTokenContract]
+        const currentContracts = [contract, controllerContract]
+
+        for (const tokenPair of tokenInfo) {
+            const matchingToken = currentTokens.find(x => x.address == tokenPair[0])
+            
+            await matchingToken.connect(user).mint(String(tokenPair[1]))
+
+            for (const currentContract of currentContracts) {
+                await matchingToken.connect(user).approve(currentContract.address, String(tokenPair[1]))
             }
         }
+
         users.push(user)
     }
+
     return users
 }
 
@@ -210,32 +215,29 @@ const allowDisable = (contractSrc : string) => {
     return contractSrc
 }
 
-const preprocessContract = (contractSrc) => {
-    contractSrc = addTimestampSupport(contractSrc)
-    if (DISABLE_REVERTS) {
-        contractSrc = disableReverts(contractSrc)
+
+const callMethod = async (method, args, options) => {
+    if (!options) {
+        options = {}
+    }
+    if (!options.caller) {
+        options.caller = deployer
     }
 
-    // Soliditypp doesn't handle tx.origin well
-    if (TX_ORIGIN_TO_MSG_SENDER) {
-        contractSrc = contractSrc.replace(/tx\.origin/g, 'msg.sender')
-    }
+    /// @ts-ignore
+    const result = await this[method](...args, options)
 
-    if (ALLOW_DISABLE) {
-        contractSrc = allowDisable(contractSrc)
-    }
-
-    return contractSrc
+    return result
 }
 
-const transpileContract = async (path) => {
-    let contractSrc = await fs.readFile(path, { encoding: 'utf8' })
-    contractSrc = preprocessContract(contractSrc)
+const deployAndPrepare = async (blueprint, args) => {
+    const contract = await blueprint.deploy(...args)
+    
+    contract.call = callMethod
 
-    const newPath = path.replace('.sol', '_parsed.sol')
-
-    await fs.writeFile(newPath, contractSrc, { encoding : 'utf-8' })
+    return contract
 }
+
 
 describe('test BasePool', function () {
     before(async function() {
@@ -244,7 +246,6 @@ describe('test BasePool', function () {
 
         console.log('Creating signer...')
         const [a] = await ethers.getSigners();
-        console.log('A:', a)
         deployer = a
 
         const erc20Blueprint = await hre.ethers.getContractFactory('MockERC20')
@@ -264,9 +265,9 @@ describe('test BasePool', function () {
 
         
 
-        controllerContractBlueprint = await hre.ethers.getContractFactory('Controller')
+        controllerContractBlueprint = await hre.ethers.getContractFactory('Controller_parsed')
 
-        contractBlueprint = await hre.ethers.getContractFactory('BasePool')
+        contractBlueprint = await hre.ethers.getContractFactory('BasePool_parsed')
     })
 
     describe('contract deployment', function () {
@@ -378,17 +379,14 @@ describe('test BasePool', function () {
             )
         })
         describe('addLiquidity', function() {
-            it.only('adds liquidity', async function () {
+            it('adds liquidity', async function () {
                 const [alice] = await newUsers([ [LOAN_CCY_TOKEN, 10000] ])
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '5000' }
-                )
+                console.log(alice.address)
+
+                await contract.connect(alice).addLiquidity(alice.address, '5000' ,150,0)
+
+                console.log('Successfully added liquidity')
 
                 // If this is the first time adding liquidity, the shares are 1000 * deposited / minLiquidity
                 const newShares = 1000 * 5000 / MIN_LIQUIDITY
@@ -422,14 +420,7 @@ describe('test BasePool', function () {
             it('adds liquidity multiple times', async function () {
                 const [alice] = await newUsers([ [LOAN_CCY_TOKEN, 10000] ])
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '5000' }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, '5000' ,150,0)
                 // If this is the first time adding liquidity, the shares are 1000 * deposited / minLiquidity
                 const firstShares = 1000 * 5000 / MIN_LIQUIDITY
 
@@ -447,14 +438,7 @@ describe('test BasePool', function () {
                     }
                 ])
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '2000' }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, '2000' ,150,0)
 
                 // More shares, using deposited / liquidity * nShares
                 const secondShares = 2000 / 5000 * firstShares
@@ -490,14 +474,7 @@ describe('test BasePool', function () {
             it('adds liquidity with rounding', async function () {
                 const [alice] = await newUsers([ [LOAN_CCY_TOKEN, 10000] ])
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '5004' }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, '5004' ,150,0)
 
                 // If this is the first time adding liquidity, the shares are 1000 * deposited / minLiquidity
                 // Note that MIN_LIQUIDITY / 1000 = 5, so you get slightly less shares than expected
@@ -530,14 +507,7 @@ describe('test BasePool', function () {
                 console.log('Bits:', bits)
                 await contract.call('setApprovals', [bob.address, bits], { caller : alice })
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : '5000' }
-                )
+                await contract.connect(bob).addLiquidity(alice.address, '5000' ,150,0)
 
                 // If this is the first time adding liquidity, the shares are 1000 * deposited / minLiquidity
                 const newShares = 1000 * 5000 / MIN_LIQUIDITY
@@ -611,14 +581,7 @@ describe('test BasePool', function () {
             it('removes liquidity', async function () {
                 const [alice] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ])
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '8000' }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, '8000' ,150,0)
                 
                 const newShares = 1000 * 8000 / MIN_LIQUIDITY
 
@@ -658,14 +621,7 @@ describe('test BasePool', function () {
             it('adds and removes liquidity multiple times', async function () {
                 const [alice] = await newUsers([ [LOAN_CCY_TOKEN, 16000] ])
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '8000' }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, '8000' ,150,0)
 
                 const addedShares1 = 1000 * 8000 / MIN_LIQUIDITY
                 console.log('Added 8000 liquidity, equal to', addedShares1, 'shares')
@@ -703,14 +659,7 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '6000' }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, '6000' ,150,0)
 
                 // For non-first deposits, the formula is deposit / totalLiquidity * totalShares
                 
@@ -764,14 +713,7 @@ describe('test BasePool', function () {
             it('removes enough liquidity to cause the total liquidity to go below the minimum', async function() {
                 const [alice] = await newUsers([ [LOAN_CCY_TOKEN, 20000] ])
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '20000' }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, '20000' ,150,0)
                 
                 const newShares = 1000 * 20000 / MIN_LIQUIDITY; // Equal to 4000
 
@@ -812,14 +754,7 @@ describe('test BasePool', function () {
             it('removes liquidity for an authorized address', async function () {
                 const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ], [])
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '8000' }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, '8000' ,150,0)
                 
                 const newShares = 1000 * 8000 / MIN_LIQUIDITY
 
@@ -866,14 +801,7 @@ describe('test BasePool', function () {
             it('fails to remove liquidity without being authorized', async function () {
                 const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ], [])
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '8000' }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, '8000' ,150,0)
 
                 const bits = approvalBits(['repay', 'addLiquidity', 'claim', 'forceRewardUpdate', 'resendRewardRequest'])
                 await contract.call('setApprovals', [bob.address, bits], { caller : alice })
@@ -891,14 +819,7 @@ describe('test BasePool', function () {
             it('fails to remove more liquidity than the user has', async function () {
                 const [alice] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ])
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '8000' }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, '8000' ,150,0)
                 
                 const newShares = 1000 * 8000 / MIN_LIQUIDITY
 
@@ -915,14 +836,7 @@ describe('test BasePool', function () {
             it('fails to remove liquidity before the minimum timestamp', async function () {
                 const [alice] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ])
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : '8000' }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, '8000' ,150,0)
                 
                 const newShares = 1000 * 8000 / MIN_LIQUIDITY
 
@@ -949,14 +863,7 @@ describe('test BasePool', function () {
                 const loanAmount = 428
                 const repaymentAmount = 582
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
                 
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
@@ -1003,14 +910,7 @@ describe('test BasePool', function () {
                 const loanAmount = 428
                 const repaymentAmount = 582
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
                 
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
@@ -1051,14 +951,7 @@ describe('test BasePool', function () {
                 const liquidity = 8000
                 const collateralPledge = 500
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
 
                 await setTime(151)
 
@@ -1083,14 +976,7 @@ describe('test BasePool', function () {
                 const loanAmount = 428
                 const repaymentAmount = 582
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
                 
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
@@ -1115,14 +1001,7 @@ describe('test BasePool', function () {
                 const loanAmount = 428
                 const repaymentAmount = 582
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
                 
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
@@ -1144,14 +1023,7 @@ describe('test BasePool', function () {
                 const liquidity = 4999
                 const collateralPledge = 500
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
                 
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
@@ -1173,14 +1045,7 @@ describe('test BasePool', function () {
                 const liquidity = 5001
                 const collateralPledge = 500
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
                 
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
@@ -1202,14 +1067,7 @@ describe('test BasePool', function () {
                 const liquidity = 8000
                 const collateralPledge = 0
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
                 
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
@@ -1231,14 +1089,7 @@ describe('test BasePool', function () {
                 const liquidity = 8000
                 const collateralPledge = 500
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
                 
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
@@ -1260,14 +1111,7 @@ describe('test BasePool', function () {
                 const liquidity = 8000
                 const collateralPledge = 500
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
 
                 await expect(contract.call('borrow', 
                     [
@@ -1295,14 +1139,7 @@ describe('test BasePool', function () {
                 const loanAmount = 428
                 const repaymentAmount = 582
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
                 
                 // The contract doesn't allow atomic addLiquidity + borrow
                 await setTime(1)
@@ -1365,14 +1202,7 @@ describe('test BasePool', function () {
                 console.log('Bits:', bits)
                 await contract.call('setApprovals', [charlie.address, bits], { caller : bob })
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
                 
                 // The contract doesn't allow atomic addLiquidity + borrow
                 await setTime(1)
@@ -1435,14 +1265,7 @@ describe('test BasePool', function () {
                 console.log('Bits:', bits)
                 await contract.call('setApprovals', [charlie.address, bits], { caller : bob })
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
                 
                 // The contract doesn't allow atomic addLiquidity + borrow
                 await setTime(1)
@@ -1489,14 +1312,7 @@ describe('test BasePool', function () {
                 const loanAmount = 428
                 const repaymentAmount = 582
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
                 
                 // The contract doesn't allow atomic addLiquidity + borrow
                 await setTime(1)
@@ -1543,14 +1359,7 @@ describe('test BasePool', function () {
                 const loanAmount = 428
                 const repaymentAmount = 582
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
                 
                 // The contract doesn't allow atomic addLiquidity + borrow
                 await setTime(1)
@@ -1597,14 +1406,7 @@ describe('test BasePool', function () {
                 const loanAmount = 428
                 const repaymentAmount = 582
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
                 
                 // The contract doesn't allow atomic addLiquidity + borrow
                 await setTime(1)
@@ -1650,14 +1452,7 @@ describe('test BasePool', function () {
                 const loanAmount = 428
                 const repaymentAmount = 582
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
                 
                 // The contract doesn't allow atomic addLiquidity + borrow
                 await setTime(1)
@@ -1708,14 +1503,7 @@ describe('test BasePool', function () {
                 const loanAmount = 428
                 const repaymentAmount = 582
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
                 
                 // The contract doesn't allow atomic addLiquidity + borrow
                 await setTime(1)
@@ -1761,14 +1549,7 @@ describe('test BasePool', function () {
                 const loanAmount = 428
                 const repaymentAmount = 582
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
                 
                 // The contract doesn't allow atomic addLiquidity + borrow
                 await setTime(1)
@@ -1814,14 +1595,7 @@ describe('test BasePool', function () {
                 const loanAmount = 428
                 const repaymentAmount = 582
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
                 
                 // The contract doesn't allow atomic addLiquidity + borrow
                 await setTime(1)
@@ -1867,14 +1641,7 @@ describe('test BasePool', function () {
 
                 const shares2 = Math.floor((repaymentAmount - loanAmount) / (liquidity - loanAmount) * shares)
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -1977,14 +1744,7 @@ describe('test BasePool', function () {
 
                 const shares2 = Math.floor(repaymentAmount / (liquidity - loanAmount) * shares)
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -2104,14 +1864,7 @@ describe('test BasePool', function () {
                 // then deposits the new liquidity at the end
                 const shares3 = Math.floor(repaymentAmount2 / (liquidity - loanAmount - loanAmount2) * (shares))
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -2277,23 +2030,9 @@ describe('test BasePool', function () {
 
                 //const shares2 = Math.floor((repaymentAmount - loanAmount) / (liquidity - loanAmount) * shares)
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidityAlice) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidityAlice) ,150,0)
 
-                await contract.call('addLiquidity', 
-                    [
-                        bob.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(liquidityBob) }
-                )
+                await contract.connect(bob).addLiquidity(bob.address, String(liquidityBob) ,150,0)
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -2459,23 +2198,9 @@ describe('test BasePool', function () {
                 const shares2Alice = Math.floor(repaymentAmount / (liquidity - loanAmount) * sharesAlice)
                 const shares2Bob = Math.floor(repaymentAmount / (liquidity - loanAmount) * sharesBob)
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidityAlice) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidityAlice) ,150,0)
 
-                await contract.call('addLiquidity', 
-                    [
-                        bob.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(liquidityBob) }
-                )
+                await contract.connect(bob).addLiquidity(bob.address, String(liquidityBob) ,150,0)
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -2657,23 +2382,9 @@ describe('test BasePool', function () {
                 const shares2Alice = Math.floor(repaymentAmount / (liquidity - loanAmount) * sharesAlice)
                 const shares2Bob = Math.floor(repaymentAmount / (liquidity - loanAmount) * sharesBob)
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidityAlice) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidityAlice) ,150,0)
 
-                await contract.call('addLiquidity', 
-                    [
-                        bob.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(liquidityBob) }
-                )
+                await contract.connect(bob).addLiquidity(bob.address, String(liquidityBob) ,150,0)
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -2805,14 +2516,7 @@ describe('test BasePool', function () {
 
                 // Alice now re-deposits what would have been her re-investment
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(repaymentAlice) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(repaymentAlice) ,150,0)
 
                 await checkQuery('getPoolInfo', [],
                     [
@@ -2879,26 +2583,12 @@ describe('test BasePool', function () {
                     }
                 }
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidityAlice1) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidityAlice1) ,150,0)
 
                 currentAliceLiquidity += liquidityAlice1
                 currentAliceShares += 1000 * liquidityAlice1 / MIN_LIQUIDITY
 
-                await contract.call('addLiquidity', 
-                    [
-                        bob.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(liquidityBob1) }
-                )
+                await contract.connect(bob).addLiquidity(bob.address, String(liquidityBob1) ,150,0)
 
                 addLiquidity(liquidityBob1, 'bob')
 
@@ -2921,25 +2611,11 @@ describe('test BasePool', function () {
 
                 // Add the second batch of liquidity
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidityAlice2) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidityAlice2) ,150,0)
 
                 addLiquidity(liquidityAlice2, 'alice')
 
-                await contract.call('addLiquidity', 
-                    [
-                        bob.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(liquidityBob2) }
-                )
+                await contract.connect(bob).addLiquidity(bob.address, String(liquidityBob2) ,150,0)
 
                 addLiquidity(liquidityBob2, 'bob')
 
@@ -3008,25 +2684,11 @@ describe('test BasePool', function () {
 
                 // Third batch of liquidity
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidityAlice3) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidityAlice3) ,150,0)
 
                 addLiquidity(liquidityAlice3, 'alice')
 
-                await contract.call('addLiquidity', 
-                    [
-                        bob.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(liquidityBob3) }
-                )
+                await contract.connect(bob).addLiquidity(bob.address, String(liquidityBob3) ,150,0)
 
                 addLiquidity(liquidityBob3, 'bob')
 
@@ -3141,25 +2803,11 @@ describe('test BasePool', function () {
 
                 // Fourth batch of liquidity
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidityAlice4) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidityAlice4) ,150,0)
 
                 addLiquidity(liquidityAlice4, 'alice')
 
-                await contract.call('addLiquidity', 
-                    [
-                        bob.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(liquidityBob4) }
-                )
+                await contract.connect(bob).addLiquidity(bob.address, String(liquidityBob4) ,150,0)
 
                 addLiquidity(liquidityBob4, 'bob')
 
@@ -3300,23 +2948,9 @@ describe('test BasePool', function () {
                 const repaymentAlice = Math.floor((repaymentAmount + repaymentAmount2) * liquidityAlice / liquidity)
                 const repaymentBob = Math.floor((repaymentAmount + repaymentAmount2) * liquidityBob / liquidity)
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidityAlice) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidityAlice) ,150,0)
 
-                await contract.call('addLiquidity', 
-                    [
-                        bob.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(liquidityBob) }
-                )
+                await contract.connect(bob).addLiquidity(bob.address, String(liquidityBob) ,150,0)
 
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
@@ -3453,23 +3087,9 @@ describe('test BasePool', function () {
                 const shares2Bob = Math.floor((repaymentAmount + repaymentAmount2) / (liquidity - loanAmount - loanAmount2) * sharesBob)
 
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidityAlice) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidityAlice) ,150,0)
 
-                await contract.call('addLiquidity', 
-                    [
-                        bob.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(liquidityBob) }
-                )
+                await contract.connect(bob).addLiquidity(bob.address, String(liquidityBob) ,150,0)
 
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
@@ -3606,14 +3226,7 @@ describe('test BasePool', function () {
                 const loanAmount = 428
                 const repaymentAmount = 582
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
                 
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
@@ -3671,14 +3284,7 @@ describe('test BasePool', function () {
                 console.log('Bits:', bits)
                 await contract.call('setApprovals', [charlie.address, bits], { caller : alice })
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
                 
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
@@ -3734,14 +3340,7 @@ describe('test BasePool', function () {
                 console.log('Bits:', bits)
                 await contract.call('setApprovals', [charlie.address, bits], { caller : alice })
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
                 
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
@@ -3781,14 +3380,7 @@ describe('test BasePool', function () {
                 const liquidity = 8000
                 const collateralPledge = 500
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
                 
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
@@ -3827,14 +3419,7 @@ describe('test BasePool', function () {
                 const loanAmount = 428
                 const repaymentAmount = 582
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
                 
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
@@ -3878,14 +3463,7 @@ describe('test BasePool', function () {
                 const loanAmount = 428
                 const repaymentAmount = 582
 
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        150, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
                 
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
@@ -6430,14 +6008,7 @@ describe('test BasePool', function () {
                 for (const test of setup.tests) {
                     const liquidity = BigNumber.from(test.liquidity)
                     if (currentLiquidity.lt(liquidity)) {
-                        await contract.call('addLiquidity', 
-                            [
-                                alice.address, // onBehalfOf
-                                150, // deadline
-                                0 // referralCode
-                            ],
-                            { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity.sub(currentLiquidity)) }
-                        )
+                        await contract.connect(alice).addLiquidity(alice.address, String(liquidity.sub(currentLiquidity)) ,150,0)
                     }
 
                     currentLiquidity = liquidity
@@ -6499,14 +6070,7 @@ describe('test BasePool', function () {
             // Precomputed
             const creatorFee = Math.floor(collateralPledge * 0.0027)
 
-            await contract.call('addLiquidity', 
-                [
-                    alice.address, // onBehalfOf
-                    150, // deadline
-                    0 // referralCode
-                ],
-                { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity) }
-            )
+            await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
             
             // The contract doesn't allow atomic addLiquidity + borrow
             await setTime(1)
@@ -6619,14 +6183,7 @@ describe('test BasePool', function () {
 
             await setTime(time1)
 
-            await contract.call('addLiquidity', 
-                [
-                    alice.address, // onBehalfOf
-                    10000, // deadline
-                    0 // referralCode
-                ],
-                { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity1) }
-            )
+            await contract.connect(alice).addLiquidity(alice.address, String(liquidity1) ,10000,0)
 
             await checkQuery('lastRewardTimestamp', [alice.address], [time1])
             await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity1])
@@ -6636,14 +6193,7 @@ describe('test BasePool', function () {
 
             await setTime(time2)
 
-            await contract.call('addLiquidity', 
-                [
-                    alice.address, // onBehalfOf
-                    10000, // deadline
-                    0 // referralCode
-                ],
-                { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity2 - liquidity1) }
-            )
+            await contract.connect(alice).addLiquidity(alice.address, String(liquidity2 - liquidity1) ,10000,0)
 
             await checkQuery('lastRewardTimestamp', [alice.address], [time2])
             await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity2])
@@ -6652,14 +6202,7 @@ describe('test BasePool', function () {
 
             await setTime(time3)
 
-            await contract.call('addLiquidity', 
-                [
-                    alice.address, // onBehalfOf
-                    10000, // deadline
-                    0 // referralCode
-                ],
-                { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity3 - liquidity2) }
-            )
+            await contract.connect(alice).addLiquidity(alice.address, String(liquidity3 - liquidity2) ,10000,0)
 
             await checkQuery('lastRewardTimestamp', [alice.address], [time3])
             await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity3])
@@ -6693,14 +6236,7 @@ describe('test BasePool', function () {
 
             await setTime(time1)
 
-            await contract.call('addLiquidity', 
-                [
-                    alice.address, // onBehalfOf
-                    10000, // deadline
-                    0 // referralCode
-                ],
-                { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity1) }
-            )
+            await contract.connect(alice).addLiquidity(alice.address, String(liquidity1) ,10000,0)
 
             await checkQuery('lastRewardTimestamp', [alice.address], [time1])
             await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity1])
@@ -6779,23 +6315,9 @@ describe('test BasePool', function () {
 
             await setTime(addLiquidityTime)
 
-            await contract.call('addLiquidity', 
-                [
-                    alice.address, // onBehalfOf
-                    150, // deadline
-                    0 // referralCode
-                ],
-                { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidityAlice) }
-            )
+            await contract.connect(alice).addLiquidity(alice.address, String(liquidityAlice) ,150,0)
 
-            await contract.call('addLiquidity', 
-                [
-                    bob.address, // onBehalfOf
-                    150, // deadline
-                    0 // referralCode
-                ],
-                { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(liquidityBob) }
-            )
+            await contract.connect(bob).addLiquidity(bob.address, String(liquidityBob) ,150,0)
 
             await checkQuery('lastRewardTimestamp', [alice.address], [addLiquidityTime])
             await checkQuery('lastTrackedLiquidity', [alice.address], [liquidityAlice])
@@ -6914,23 +6436,9 @@ describe('test BasePool', function () {
 
             await setTime(addLiquidityTime)
 
-            await contract.call('addLiquidity', 
-                [
-                    alice.address, // onBehalfOf
-                    150, // deadline
-                    0 // referralCode
-                ],
-                { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidityAlice) }
-            )
+            await contract.connect(alice).addLiquidity(alice.address, String(liquidityAlice) ,150,0)
 
-            await contract.call('addLiquidity', 
-                [
-                    bob.address, // onBehalfOf
-                    150, // deadline
-                    0 // referralCode
-                ],
-                { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(liquidityBob) }
-            )
+            await contract.connect(bob).addLiquidity(bob.address, String(liquidityBob) ,150,0)
 
             await checkQuery('lastRewardTimestamp', [alice.address], [addLiquidityTime])
             await checkQuery('lastTrackedLiquidity', [alice.address], [liquidityAlice])
@@ -7032,14 +6540,7 @@ describe('test BasePool', function () {
 
             await setTime(time1)
 
-            await contract.call('addLiquidity', 
-                [
-                    alice.address, // onBehalfOf
-                    10000, // deadline
-                    0 // referralCode
-                ],
-                { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity1) }
-            )
+            await contract.connect(alice).addLiquidity(alice.address, String(liquidity1) ,10000,0)
 
             await checkQuery('lastRewardTimestamp', [alice.address], [time1])
             await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity1])
@@ -7061,14 +6562,7 @@ describe('test BasePool', function () {
 
             await setTime(time3)
 
-            await contract.call('addLiquidity', 
-                [
-                    alice.address, // onBehalfOf
-                    10000, // deadline
-                    0 // referralCode
-                ],
-                { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity3 - liquidity2) }
-            )
+            await contract.connect(alice).addLiquidity(alice.address, String(liquidity3 - liquidity2) ,10000,0)
 
             
             console.log(await getPastEvents(contract, 'allEvents', {fromHeight: 0, toHeight: 0}))
@@ -7103,14 +6597,7 @@ describe('test BasePool', function () {
 
             await setTime(time1)
 
-            await contract.call('addLiquidity', 
-                [
-                    alice.address, // onBehalfOf
-                    10000, // deadline
-                    0 // referralCode
-                ],
-                { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity1) }
-            )
+            await contract.connect(alice).addLiquidity(alice.address, String(liquidity1) ,10000,0)
 
             await checkQuery('lastRewardTimestamp', [alice.address], [time1])
             await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity1])
@@ -7134,14 +6621,7 @@ describe('test BasePool', function () {
 
             await setTime(time3)
 
-            await contract.call('addLiquidity', 
-                [
-                    alice.address, // onBehalfOf
-                    10000, // deadline
-                    0 // referralCode
-                ],
-                { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity3 - liquidity2) }
-            )
+            await contract.connect(alice).addLiquidity(alice.address, String(liquidity3 - liquidity2) ,10000,0)
 
             
             console.log('Added liquidity 2')
@@ -7168,14 +6648,7 @@ describe('test BasePool', function () {
 
             await setTime(time1)
 
-            await contract.call('addLiquidity', 
-                [
-                    alice.address, // onBehalfOf
-                    10000, // deadline
-                    0 // referralCode
-                ],
-                { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity1) }
-            )
+            await contract.connect(alice).addLiquidity(alice.address, String(liquidity1) ,10000,0)
 
             await checkQuery('lastRewardTimestamp', [alice.address], [time1])
             await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity1])
@@ -7242,14 +6715,7 @@ describe('test BasePool', function () {
 
             await setTime(31)
 
-            await contract.call('addLiquidity', 
-                [
-                    alice.address, // onBehalfOf
-                    10000, // deadline
-                    0 // referralCode
-                ],
-                { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(6000) }
-            )
+            await contract.connect(alice).addLiquidity(alice.address, String(6000) ,10000,0)
             liquidityAlice += 6000
             trackedLiquidityAlice += 6000
             sharesAlice += 1000 * liquidityAlice / MIN_LIQUIDITY
@@ -7257,14 +6723,7 @@ describe('test BasePool', function () {
 
             await checkTracked()
 
-            await contract.call('addLiquidity', 
-                [
-                    bob.address, // onBehalfOf
-                    10000, // deadline
-                    0 // referralCode
-                ],
-                { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(2000) }
-            )
+            await contract.connect(bob).addLiquidity(bob.address, String(2000) ,10000,0)
             trackedLiquidityBob += 2000
             sharesBob += Math.floor(2000 / totalLiquidity() * totalShares())
             liquidityBob += 2000
@@ -7336,14 +6795,7 @@ describe('test BasePool', function () {
 
             // Bob adds 1571 liquidity
             
-            await contract.call('addLiquidity', 
-                [
-                    bob.address, // onBehalfOf
-                    10000, // deadline
-                    0 // referralCode
-                ],
-                { caller : bob, tokenId : LOAN_CCY_TOKEN, amount : String(1571) }
-            )
+            await contract.connect(bob).addLiquidity(bob.address, String(1571) ,10000,0)
 
             totalRewardBob += Math.floor((233 - lastRewardTimestampBob) * coefficient * trackedLiquidityBob)
             sharesBob += Math.floor(1571 / totalLiquidity() * totalShares())
@@ -7443,14 +6895,7 @@ describe('test BasePool', function () {
 
             await setTime(751)
 
-            await contract.call('addLiquidity',
-                [
-                    alice.address, // onBehalfOf
-                    10000, // deadline
-                    0 // referralCode
-                ],
-                { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(451) }
-            )
+            await contract.connect(alice).addLiquidity(alice.address, String(451) ,10000,0)
             totalRewardAlice += Math.floor((751 - lastRewardTimestampAlice) * coefficient * trackedLiquidityAlice)
             sharesAlice += Math.floor(451 / totalLiquidity() * totalShares())
             liquidityAlice += 451
@@ -7475,14 +6920,7 @@ describe('test BasePool', function () {
     
                 await setTime(time1)
     
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        10000, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity1) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity1) ,10000,0)
     
                 await checkQuery('lastRewardTimestamp', [alice.address], [time1])
                 await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity1])
@@ -7494,14 +6932,7 @@ describe('test BasePool', function () {
                 // Disable Controller
                 await controllerContract.call('setDisabled', [true], { caller : alice })
     
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        10000, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity2 - liquidity1) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity2 - liquidity1) ,10000,0)
     
                 await checkQuery('lastRewardTimestamp', [alice.address], [time2])
                 await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity2])
@@ -7542,14 +6973,7 @@ describe('test BasePool', function () {
     
                 await setTime(time1)
     
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        10000, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity1) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity1) ,10000,0)
     
                 await checkQuery('lastRewardTimestamp', [alice.address], [time1])
                 await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity1])
@@ -7561,14 +6985,7 @@ describe('test BasePool', function () {
                 // Disable Controller
                 await controllerContract.call('setDisabled', [true], { caller : alice })
     
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        10000, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity2 - liquidity1) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity2 - liquidity1) ,10000,0)
     
                 await checkQuery('lastRewardTimestamp', [alice.address], [time2])
                 await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity2])
@@ -7605,14 +7022,7 @@ describe('test BasePool', function () {
     
                 await setTime(time1)
     
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        10000, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity1) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity1) ,10000,0)
     
                 await checkQuery('lastRewardTimestamp', [alice.address], [time1])
                 await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity1])
@@ -7620,14 +7030,7 @@ describe('test BasePool', function () {
     
                 await setTime(time2)
     
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        10000, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity2 - liquidity1) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity2 - liquidity1) ,10000,0)
     
                 await checkQuery('lastRewardTimestamp', [alice.address], [time2])
                 await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity2])
@@ -7661,14 +7064,7 @@ describe('test BasePool', function () {
     
                 await setTime(time1)
     
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        10000, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity1) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity1) ,10000,0)
     
                 await checkQuery('lastRewardTimestamp', [alice.address], [time1])
                 await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity1])
@@ -7699,14 +7095,7 @@ describe('test BasePool', function () {
     
                 await setTime(time1)
     
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        10000, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity1) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity1) ,10000,0)
     
                 await checkQuery('lastRewardTimestamp', [alice.address], [time1])
                 await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity1])
@@ -7720,14 +7109,7 @@ describe('test BasePool', function () {
                 // Disable Controller
                 await controllerContract.call('setDisabled', [true], { caller : alice })
     
-                await contract.call('addLiquidity', 
-                    [
-                        alice.address, // onBehalfOf
-                        10000, // deadline
-                        0 // referralCode
-                    ],
-                    { caller : alice, tokenId : LOAN_CCY_TOKEN, amount : String(liquidity2 - liquidity1) }
-                )
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity2 - liquidity1) ,10000,0)
     
                 await checkQuery('lastRewardTimestamp', [alice.address], [time2])
                 await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity2])
