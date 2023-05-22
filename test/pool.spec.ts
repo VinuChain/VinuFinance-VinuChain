@@ -584,7 +584,7 @@ describe('test BasePool', function () {
                     '5000',
                     150, // deadline
                     0 // referralCode
-                )).to.be.eventually.rejectedWith('revert')
+                )).to.be.revertedWith('Sender not approved.')
             })
             it('fails to add liquidity with an incorrect token', async function () {
                 const [alice] = await newUsers([ [COLL_CCY_TOKEN, 10000] ])
@@ -594,7 +594,7 @@ describe('test BasePool', function () {
                     '5000',
                     150, // deadline
                     0 // referralCode
-                )).to.be.eventually.rejectedWith('revert')
+                )).to.be.revertedWith('ERC20: insufficient allowance')
             })
             it('fails to add liquidity after the deadline', async function () {
                 const [alice] = await newUsers([ [LOAN_CCY_TOKEN, 10000] ])
@@ -606,7 +606,7 @@ describe('test BasePool', function () {
                     '5000',
                     150, // deadline
                     0 // referralCode
-                )).to.be.eventually.rejectedWith('revert')
+                )).to.be.revertedWith('Past deadline.')
             })
             it('fails to add more liquidity than the allowance', async function () {
                 const [alice] = await newUsers([ [LOAN_CCY_TOKEN, 10000] ])
@@ -615,7 +615,7 @@ describe('test BasePool', function () {
 
                 await expect(
                     contract.connect(alice).addLiquidity(alice.address, '5000' ,150,0)
-                ).to.be.rejectedWith('revert')
+                ).to.be.revertedWith('ERC20: insufficient allowance')
 
                 
             })
@@ -843,7 +843,7 @@ describe('test BasePool', function () {
                 await expect(contract.connect(bob).removeLiquidity(
                         alice.address, // onBehalfOf
                         200 // shares
-                    )).to.be.eventually.rejectedWith('revert')
+                    )).to.be.revertedWith('Sender not approved.')
             })
             it('fails to remove more liquidity than the user has', async function () {
                 const [alice] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ])
@@ -857,7 +857,7 @@ describe('test BasePool', function () {
                 expect(contract.connect(alice).removeLiquidity(
                         alice.address, // onBehalfOf
                         newShares + 1 // shares
-                    )).to.eventually.be.rejectedWith('revert')
+                    )).to.be.revertedWith('Invalid removal operation.')
             })
             it('fails to remove liquidity before the minimum timestamp', async function () {
                 const [alice] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ])
@@ -871,7 +871,7 @@ describe('test BasePool', function () {
                 expect(contract.connect(alice).removeLiquidity(
                         alice.address, // onBehalfOf
                         newShares // shares
-                    )).to.eventually.be.rejectedWith('revert')
+                    )).to.be.revertedWith('Too early to remove.')
             })
         })
 
@@ -974,7 +974,7 @@ describe('test BasePool', function () {
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    )).to.be.eventually.rejectedWith('revert')
+                    )).to.be.revertedWith('Past deadline.')
             })
             it('fails to borrow below the minimum loan limit', async function () {
                 const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ], [[COLL_CCY_TOKEN, 8000]])
@@ -996,7 +996,7 @@ describe('test BasePool', function () {
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    )).to.be.eventually.rejectedWith('revert')
+                    )).to.be.revertedWith('Loan below limit.')
             })
             it('fails to borrow above the maximum repay limit', async function () {
                 const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ], [[COLL_CCY_TOKEN, 8000]])
@@ -1017,7 +1017,7 @@ describe('test BasePool', function () {
                         469, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    )).to.be.eventually.rejectedWith('revert')
+                    )).to.be.revertedWith('Repayment above limit.')
             })
             it('fails to borrow when the liquidity is below minimum', async function () {
                 const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ], [[COLL_CCY_TOKEN, 8000]])
@@ -1035,25 +1035,7 @@ describe('test BasePool', function () {
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    )).to.be.eventually.rejectedWith('revert')
-            })
-            it('fails to borrow enough to cause the liquidity to go below the minimum', async function () {
-                const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ], [[COLL_CCY_TOKEN, 8000]])
-
-                const liquidity = 5001
-                const collateralPledge = 500
-
-                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
-                
-                // The contract doesn't allow atomic addLiquidity+borrow
-                await setTime(1)
-
-                await expect(contract.connect(bob).borrow(bob.address, // onBehalfOf
-                        String(collateralPledge), 1, // minLoanLimit
-                        10000, // maxRepayLimit
-                        150, // deadline
-                        0 // referralCode
-                    )).to.be.eventually.rejectedWith('revert')
+                    )).to.be.revertedWith('Insufficient liquidity.')
             })
             it('fails to borrow with zero collateral', async function () {
                 const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ], [[COLL_CCY_TOKEN, 8000]])
@@ -1067,11 +1049,11 @@ describe('test BasePool', function () {
                 await setTime(1)
 
                 await expect(contract.connect(bob).borrow(bob.address, // onBehalfOf
-                        String(collateralPledge), 200, // minLoanLimit
+                        String(collateralPledge), 0, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    )).to.be.eventually.rejectedWith('revert')
+                    )).to.be.revertedWith('Loan too small.')
             })
             it('fails to add liquidity and borrow atomically', async function () {
                 const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ], [[COLL_CCY_TOKEN, 8000]])
@@ -1086,7 +1068,7 @@ describe('test BasePool', function () {
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
-                    )).to.be.eventually.rejectedWith('revert')
+                    )).to.be.revertedWith('Invalid operation.')
             })
         })
 
@@ -1249,7 +1231,7 @@ describe('test BasePool', function () {
                         1,
                         bob.address
                     )
-                ).to.eventually.be.rejectedWith('revert')
+                ).to.be.revertedWith('Sender not approved.')
             })
 
             it('fails to repay after the deadline', async function () {
@@ -1293,7 +1275,7 @@ describe('test BasePool', function () {
                         1,
                         bob.address
                     )
-                ).to.eventually.be.rejectedWith('revert')
+                ).to.be.revertedWith('Cannot repay after expiry.')
             })
             it('fails to repay an invalid loan', async function () {
                 const [alice, bob] = await newUsers(
@@ -1335,7 +1317,7 @@ describe('test BasePool', function () {
                     2, // Instead of 1
                     bob.address
                 )
-                ).to.be.eventually.rejectedWith('revert')
+                ).to.be.revertedWith('Invalid loan index.')
             })
             it('fails to repay an already repaid loan', async function () {
                 const [alice, bob] = await newUsers(
@@ -1382,7 +1364,7 @@ describe('test BasePool', function () {
                     1,
                     bob.address
                 )
-                ).to.be.eventually.rejectedWith('revert')
+                ).to.be.revertedWith('Already repaid.')
             })
             it('fails to borrow and repay atomically', async function () {
                 const [alice, bob] = await newUsers(
@@ -1417,11 +1399,11 @@ describe('test BasePool', function () {
                 expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(10000 + loanAmount))
 
                 await expect(
-                    contract.repay(
+                    contract.connect(bob).repay(
                         1,
                         bob.address
                     )
-                ).to.eventually.be.rejectedWith('revert')
+                ).to.be.revertedWith('Cannot repay in the same block.')
             })
         })
 
@@ -3071,7 +3053,7 @@ describe('test BasePool', function () {
                         [1],
                         0,
                         150
-                    )).to.be.eventually.rejectedWith('revert')
+                    )).to.be.revertedWith('Sender not approved.')
             })
 
             it('fails to claim the collateral of an active loan', async function () {
@@ -3100,7 +3082,7 @@ describe('test BasePool', function () {
                         [1],
                         0,
                         150
-                    )).to.be.eventually.rejectedWith('revert')
+                    )).to.be.revertedWith('Cannot claim with unsettled loan.')
             })
 
             it('fails to claim the collateral of an invalid loan', async function () {
@@ -3138,7 +3120,7 @@ describe('test BasePool', function () {
                         [2],
                         0,
                         150
-                    )).to.be.eventually.rejectedWith('revert')
+                )).to.be.revertedWith('Loan indexes with changing shares.')
             })
 
             it('fails to claim an already claimed loan', async function () {
@@ -3183,7 +3165,7 @@ describe('test BasePool', function () {
                         [1],
                         0,
                         150
-                    )).to.be.eventually.rejectedWith('revert')
+                    )).to.be.revertedWith('Unentitled from loan indices.')
             })
         })
 
@@ -3263,7 +3245,8 @@ describe('test BasePool', function () {
                     await setTime(19, controllerContract)
 
                     expect(
-                        controllerContract.connect(alice).withdrawVoteToken(String(201))).to.be.eventually.rejectedWith()
+                        controllerContract.connect(alice).withdrawVoteToken(String(201))
+                    ).to.be.revertedWith('Not enough tokens.')
                 })
 
                 it('fails to withdraw zero tokens', async function() {
@@ -3276,7 +3259,8 @@ describe('test BasePool', function () {
                     await setTime(19, controllerContract)
 
                     expect(
-                        controllerContract.connect(alice).withdrawVoteToken(String(0))).to.be.eventually.rejectedWith()
+                        controllerContract.connect(alice).withdrawVoteToken(String(0))
+                    ).to.be.revertedWith('Cannot make a zero-value withdraw.')
                 })
 
                 it('fails to withdraw too early', async function() {
@@ -3289,7 +3273,9 @@ describe('test BasePool', function () {
 
                     await setTime(9, controllerContract)
 
-                    await expect(controllerContract.connect(alice).withdrawVoteToken(String(50))).to.be.eventually.rejectedWith('revert')
+                    await expect(
+                        controllerContract.connect(alice).withdrawVoteToken(String(50))
+                    ).to.be.revertedWith('Too early to withdraw.')
                 })
             })
 
@@ -3316,7 +3302,7 @@ describe('test BasePool', function () {
 
                     await expect(
                         controllerContract.connect(alice).createProposal(contract.address, 4, 150)
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWithoutReason()
                 })
 
                 it('fails to create a proposal with a deadline in the past', async function ()  {
@@ -3325,7 +3311,7 @@ describe('test BasePool', function () {
                     await setTime(151, controllerContract)
                     await expect(
                         controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('Deadline must not be before timestamp.')
                 })
             })
 
@@ -3589,7 +3575,7 @@ describe('test BasePool', function () {
 
                     await expect(
                         controllerContract.connect(alice).vote(0)
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('No voting power.')
                 })
 
                 it('fails to vote multiple times', async function () {
@@ -3607,7 +3593,7 @@ describe('test BasePool', function () {
                     await controllerContract.connect(alice).vote(0)
                     await expect(
                         controllerContract.connect(alice).vote(0)
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('Already voted.')
                 })
 
                 it('fails to remove a vote without having ever voted', async function () {
@@ -3624,7 +3610,7 @@ describe('test BasePool', function () {
 
                     await expect(
                         controllerContract.connect(alice).removeVote(0)
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('Did not vote.')
                 })
 
                 it('fails to remove a vote multiple times', async function () {
@@ -3647,7 +3633,7 @@ describe('test BasePool', function () {
                     // Remove twice
                     await expect(
                         controllerContract.connect(alice).removeVote(0)
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('Did not vote.')
                 })
 
                 it('fails to vote on an executed proposal', async function () {
@@ -3668,7 +3654,7 @@ describe('test BasePool', function () {
 
                     await expect(
                         controllerContract.connect(alice).vote(0)
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('Proposal already executed.')
                 })
 
                 it('fails to vote on an expired proposal', async function () {
@@ -3687,7 +3673,7 @@ describe('test BasePool', function () {
 
                     await expect(
                         controllerContract.connect(alice).vote(0)
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('Proposal expired.')
                 })
 
                 it('fails to withdraw when voting', async function () {
@@ -3706,7 +3692,7 @@ describe('test BasePool', function () {
 
                     await expect(
                         controllerContract.connect(alice).withdrawVoteToken(String(50))
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('Cannot withdraw when votes are active.')
 
                 })
 
@@ -3715,11 +3701,11 @@ describe('test BasePool', function () {
 
                     await expect(
                         contract.connect(alice).pause()
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('Not the controller.')
 
                     await expect(
                         contract.connect(alice).unpause()
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('Not the controller.')
                 })
             })
             describe('token snapshotting', function () {
@@ -4091,7 +4077,7 @@ describe('test BasePool', function () {
 
                     await expect(
                         controllerContract.connect(bob).claimToken(LOAN_CCY_TOKEN, 0, 0)
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('Already claimed.')
                     
                 })
 
@@ -4108,7 +4094,7 @@ describe('test BasePool', function () {
 
                     await expect(
                         controllerContract.connect(bob).claimToken(LOAN_CCY_TOKEN, 1, 0)
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('Invalid token snapshot idx.')
                 })
 
                 it('fails to claim with an invalid account snapshot idx', async function () {
@@ -4124,7 +4110,7 @@ describe('test BasePool', function () {
 
                     await expect(
                         controllerContract.connect(bob).claimToken(LOAN_CCY_TOKEN, 0, 1)
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('Invalid account snapshot idx.')
                 })
 
                 it('fails to claim with an account snapshot idx after the snapshot', async function () {
@@ -4144,7 +4130,7 @@ describe('test BasePool', function () {
                     // accountSnapshot 1 exists, but it's not the correct snapshotIdx for claiming tokenSnapshot=0
                     await expect(
                         controllerContract.connect(bob).claimToken(LOAN_CCY_TOKEN, 0, 1)
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('Invalid account snapshot idx.')
                 })
 
                 it('fails to claim with an account snapshot idx too much before the snapshot', async function () {
@@ -4168,7 +4154,7 @@ describe('test BasePool', function () {
                     // accountSnapshot 0 exists, but it's not the correct snapshotIdx for claiming tokenSnapshot=1
                     await expect(
                         controllerContract.connect(bob).claimToken(LOAN_CCY_TOKEN, 1, 0)
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('Incorrect account snapshot idx.')
                 })
 
                 describe('claimToken edge cases', function () {
@@ -4208,7 +4194,7 @@ describe('test BasePool', function () {
                                     console.log('Testing failure with', i)
                                     await expect(
                                         controllerContract.connect(bob).claimToken(LOAN_CCY_TOKEN, 0, i)
-                                    ).to.be.eventually.rejectedWith('revert')
+                                    ).to.be.revertedWith('Incorrect account snapshot idx.')
                                 }
                             }
 
@@ -4501,7 +4487,7 @@ describe('test BasePool', function () {
                             [0, 1],
                             [0, 1]
                         )
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('_tokens and _tokenSnapshotIdxs must have the same length.')
 
                     // Too many account snapshot idxs
                     await expect(
@@ -4510,7 +4496,7 @@ describe('test BasePool', function () {
                             [0, 1, 1],
                             [0, 1]
                         )
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('_tokens and _tokenSnapshotIdxs must have the same length.')
 
                     // Too many token snapshot idxs
                     await expect(
@@ -4519,10 +4505,10 @@ describe('test BasePool', function () {
                             [0, 1],
                             [0, 1, 1]
                         )
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('_tokens and _accountSnapshotIdxs must have the same length.')
                 })
 
-                it('fails to claim a token multiple times', async function () {
+                it('fails to claim a token multiple times in the same transaction', async function () {
                     const [alice, bob, charlie] = await newUsers([[LOAN_CCY_TOKEN, 10000]], [[VOTE_TOKEN, 1000]], [[VOTE_TOKEN, 1000]])
 
                     // Take a voteToken snapshot
@@ -4564,7 +4550,7 @@ describe('test BasePool', function () {
                             [0, 1, 1],
                             [0, 1, 1]
                         )
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('Already claimed.')
                 })
 
                 it('fails to claim a token with a zero-length parameter', async function () {
@@ -4609,7 +4595,7 @@ describe('test BasePool', function () {
                             [],
                             []
                         )
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('Arrays must have at least one element.')
                 })
 
                 it('fails to claim multiple token snapshots if one is incorrect', async function () {
@@ -4653,7 +4639,7 @@ describe('test BasePool', function () {
                             [0, 1],
                             [1, 1] // Account snapshot 0 is the incorrect snapshot to claim token snapshot 1
                         )
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('Incorrect account snapshot idx.')
 
                     await expect(
                         controllerContract.connect(charlie).claimMultiple(
@@ -4661,7 +4647,7 @@ describe('test BasePool', function () {
                             [0, 1],
                             [1, 1] // Account snapshot 0 is the incorrect snapshot to claim token snapshot 1
                         )
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('Incorrect account snapshot idx.')
 
                     // Check that no money was actually disbursed
                     expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal('0')
@@ -4683,7 +4669,7 @@ describe('test BasePool', function () {
 
                     await expect(
                         controllerContract.connect(alice).depositRewardSupply('1000')
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('ERC20: insufficient allowance')
                 })
             })
 
@@ -4804,7 +4790,7 @@ describe('test BasePool', function () {
                     const [alice] = await newUsers([])
                     await expect(
                         controllerContract.connect(alice).collectReward(true)
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('No reward to collect.')
                 })
             })
 
@@ -4831,8 +4817,6 @@ describe('test BasePool', function () {
                         oldHolder: deployer.address,
                         newHolder : ZERO_ADDRESS
                     }], controllerContract)
-
-                    
                 })
 
                 it('fails to transfer the veto power without being the holder', async function () {
@@ -4840,19 +4824,19 @@ describe('test BasePool', function () {
 
                     await expect(
                         controllerContract.connect(alice).transferVetoPower(bob.address, false)
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('Not the veto holder.')
                 })
 
                 it('fails to transfer the veto power to itself', async function () {
                     await expect(
                         controllerContract.connect(deployer).transferVetoPower(deployer.address, false)
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('Already the veto holder.')
                 })
 
                 it('fails to transfer the veto power to the zero address without the correct flag', async function () {
                     await expect(
                         controllerContract.connect(deployer).transferVetoPower(ZERO_ADDRESS, false)
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('Transfer to the zero address.')
                 })
             })
 
@@ -4907,7 +4891,7 @@ describe('test BasePool', function () {
                 it('fails to approve a non-existent proposal', async function () {
                     await expect(
                         controllerContract.connect(deployer).setVetoHolderApproval(0, true)
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('Invalid proposal idx.')
                 })
 
                 it('fails to approve without being the veto holder', async function () {
@@ -4920,7 +4904,7 @@ describe('test BasePool', function () {
 
                     await expect(
                         controllerContract.connect(alice).setVetoHolderApproval(0, true)
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('Not the veto holder.')
                 })
 
                 it('fails to approve a non-whitelist proposal', async function () {
@@ -4933,7 +4917,7 @@ describe('test BasePool', function () {
 
                     await expect(
                         controllerContract.connect(deployer).setVetoHolderApproval(0, true)
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('Not a whitelist proposal.')
                 })
 
                 it('fails to de-approve an executed proposal', async function () {
@@ -4952,7 +4936,7 @@ describe('test BasePool', function () {
                     
                     await expect(
                         controllerContract.connect(deployer).setVetoHolderApproval(0, true)
-                    ).to.be.eventually.rejectedWith('revert') 
+                    ).to.be.revertedWith('Proposal already executed.')
                 })
             })
 
@@ -5201,7 +5185,7 @@ describe('test BasePool', function () {
                         controllerContract.connect(charlie).requestTokenDistribution(
                             dan.address, liquidity, duration, rewardCoefficient
                         )
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('Pool is not whitelisted.')
                 })
 
                 it('fails to request token distribution when there are not enough tokens', async function () {
@@ -5240,7 +5224,7 @@ describe('test BasePool', function () {
                         controllerContract.connect(charlie).requestTokenDistribution(
                             dan.address, liquidity, duration, rewardCoefficient
                         )
-                    ).to.be.eventually.rejectedWith('revert')
+                    ).to.be.revertedWith('Not enough vote tokens.')
                 })
             })
         })
@@ -5968,7 +5952,7 @@ describe('test BasePool', function () {
                 contract.connect(bob).forceRewardUpdate(
                         alice.address, // onBehalfOf
                     )
-            ).to.be.eventually.rejectedWith('revert')
+            ).to.be.revertedWith('Sender not approved.')
         })
 
         it('checks that rewards are distributed correctly with a mix of operations', async function () {

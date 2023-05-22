@@ -546,8 +546,8 @@ contract Controller is IController {
      * @param _accountSnapshotIdxs Indexes of the account snapshots
      */
     function claimMultiple(IERC20[] memory _tokens, uint256[] memory _tokenSnapshotIdxs, uint256[] memory _accountSnapshotIdxs) external {
-        require(_tokens.length == _accountSnapshotIdxs.length, "_tokens and _accountSnapshotIdxs must have the same length.");
         require(_tokens.length == _tokenSnapshotIdxs.length, "_tokens and _tokenSnapshotIdxs must have the same length.");
+        require(_tokens.length == _accountSnapshotIdxs.length, "_tokens and _accountSnapshotIdxs must have the same length.");
         require(_tokens.length > 0, "Arrays must have at least one element.");
 
         for (uint256 i = 0; i < _tokens.length; i++) {
@@ -596,7 +596,7 @@ contract Controller is IController {
      *                 or to transfer it to the caller
      */
     function collectReward(bool _deposit) external {
-        require(rewardBalance[msg.sender] > 0, "No rewards to collect.");
+        require(rewardBalance[msg.sender] > 0, "No reward to collect.");
 
         uint256 amount = rewardBalance[msg.sender];
         rewardBalance[msg.sender] = 0;
