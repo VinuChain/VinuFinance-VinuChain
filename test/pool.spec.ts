@@ -608,6 +608,17 @@ describe('test BasePool', function () {
                     0 // referralCode
                 )).to.be.eventually.rejectedWith('revert')
             })
+            it('fails to add more liquidity than the allowance', async function () {
+                const [alice] = await newUsers([ [LOAN_CCY_TOKEN, 10000] ])
+
+                await loanCcyTokenContract.connect(alice).approve(contract.address, '4999')
+
+                await expect(
+                    contract.connect(alice).addLiquidity(alice.address, '5000' ,150,0)
+                ).to.be.rejectedWith('revert')
+
+                
+            })
         })
 
         describe('removeLiquidity', function() {
