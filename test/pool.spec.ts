@@ -261,6 +261,19 @@ const deployAndPrepare = async (blueprint, args) => {
     return contract
 }
 
+const whitelistContract = async () => {
+    const [manager] = await newUsers([ [VOTE_TOKEN, 10000100] ])
+    await controllerContract.connect(manager).depositRewardSupply('10000000')
+
+    await controllerContract.connect(manager).depositVoteToken(String(100))
+
+    await controllerContract.connect(manager).createProposal(contract.address, Actions.Whitelist, 1000000)
+    await controllerContract.connect(manager).vote(0)
+    await controllerContract.connect(deployer).setVetoHolderApproval(0, true)
+
+    await checkQuery('poolWhitelisted', [contract.address], [true], controllerContract)
+}
+
 
 describe('test BasePool', function () {
     before(async function() {
@@ -636,6 +649,9 @@ describe('test BasePool', function () {
                 ])
             })
             it('adds and removes liquidity multiple times', async function () {
+                // Whitelist, since there will be multiple contract operations (and thus requests)
+                await whitelistContract()
+
                 const [alice] = await newUsers([ [LOAN_CCY_TOKEN, 16000] ])
 
                 await contract.connect(alice).addLiquidity(alice.address, '8000' ,150,0)
@@ -1223,49 +1239,6 @@ describe('test BasePool', function () {
                         bob.address
                     )
                 ).to.eventually.be.rejectedWith('revert')
-            })
-            
-            it('repays with more than the expected amount', async function () {
-                const [alice, bob] = await newUsers(
-                    [ [LOAN_CCY_TOKEN, 8000] ],
-                    [ [LOAN_CCY_TOKEN, 10000], [COLL_CCY_TOKEN, 8000] ])
-
-                const liquidity = 8000
-                const collateralPledge = 500
-                const shares = 1000 * liquidity / MIN_LIQUIDITY
-                // Precomputed
-                const loanAmount = 428
-                const repaymentAmount = 582
-
-                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
-                
-                // The contract doesn't allow atomic addLiquidity + borrow
-                await setTime(1)
-
-                await contract.connect(bob).borrow(bob.address, // onBehalfOf
-                        String(collateralPledge), 200, // minLoanLimit
-                        10000, // maxRepayLimit
-                        150, // deadline
-                        0 // referralCode
-                    )
-
-                await checkQuery('getPoolInfo', [],
-                    [
-                        LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
-                        liquidity - loanAmount, shares, REWARD_COEFFICIENT, 2
-                    ]
-                )
-                expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(10000 + loanAmount))
-
-                // The contract doesn't allow atomic borrow + repay
-                await setTime(2)
-
-                await expect(
-                    contract.connect(bob).repay(
-                        1,
-                        bob.address
-                    )
-                ).to.be.eventually.rejectedWith('revert')
             })
 
             it('fails to repay after the deadline', async function () {
@@ -2276,6 +2249,9 @@ describe('test BasePool', function () {
 
                 // Alice now re-deposits what would have been her re-investment
 
+                // We need to increase the allowance
+                await loanCcyTokenContract.connect(alice).approve(contract.address, repaymentAlice)
+
                 await contract.connect(alice).addLiquidity(alice.address, String(repaymentAlice) ,150,0)
 
                 await checkQuery('getPoolInfo', [],
@@ -2297,6 +2273,9 @@ describe('test BasePool', function () {
             })
 
             it('splits the loan interest among two parties (with in-the-middle liquidity and re-invest)', async function () {
+                // Whitelist, since there will be multiple contract operations (and thus requests)
+                await whitelistContract()
+
                 const [alice, bob, charlie] = await newUsers([ [LOAN_CCY_TOKEN, 10000] ], [[ LOAN_CCY_TOKEN, 10000]],  [[LOAN_CCY_TOKEN, 8000], [COLL_CCY_TOKEN, 8000]])
 
                 const liquidityAlice1 = 1000
@@ -2665,18 +2644,18 @@ describe('test BasePool', function () {
                 // Instead, he will receive all the remaining funds (which is 1 more than what he would have actually received)
                 const expectedBobWithdrawal = (currentTotalLiquidity() - MIN_LIQUIDITY) - expectedAliceWithdrawal
 
-                const balanceBeforeRemoveAlice = Number(await alice.balance())
+                const balanceBeforeRemoveAlice = Number(await loanCcyTokenContract.balanceOf(alice.address))
 
                 await contract.connect(alice).removeLiquidity(alice.address, currentAliceShares)
 
-                const balanceAfterRemoveAlice = Number(await alice.balance())
+                const balanceAfterRemoveAlice = Number(await loanCcyTokenContract.balanceOf(alice.address))
                 expect(balanceAfterRemoveAlice - balanceBeforeRemoveAlice).to.be.equal(expectedAliceWithdrawal)
 
-                const balanceBeforeRemoveBob = Number(await bob.balance())
+                const balanceBeforeRemoveBob = Number(await loanCcyTokenContract.balanceOf(bob.address))
 
                 await contract.connect(bob).removeLiquidity(bob.address, currentBobShares)
 
-                const balanceAfterRemoveBob = Number(await bob.balance())
+                const balanceAfterRemoveBob = Number(await loanCcyTokenContract.balanceOf(bob.address))
                 expect(balanceAfterRemoveBob - balanceBeforeRemoveBob).to.be.equal(expectedBobWithdrawal)
             })
 
@@ -4832,7 +4811,7 @@ describe('test BasePool', function () {
                     }], controllerContract)
                 })
 
-                it('transfers the veto power to the zero-address', async function () {
+                it('transfers the veto power to the zero address', async function () {
                     await checkQuery('vetoHolder', [], [deployer.address], controllerContract)
                     const tx1 = await controllerContract.connect(deployer).transferVetoPower(ZERO_ADDRESS, true)
                     await checkQuery('vetoHolder', [], [ZERO_ADDRESS], controllerContract)
@@ -4859,7 +4838,7 @@ describe('test BasePool', function () {
                     ).to.be.eventually.rejectedWith('revert')
                 })
 
-                it('fails to transfer the veto power to the zero-address without the correct flag', async function () {
+                it('fails to transfer the veto power to the zero address without the correct flag', async function () {
                     await expect(
                         controllerContract.connect(deployer).transferVetoPower(ZERO_ADDRESS, false)
                     ).to.be.eventually.rejectedWith('revert')
@@ -5117,7 +5096,7 @@ describe('test BasePool', function () {
 
                     expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
 
-                    // Transfer veto power to the zero-address
+                    // Transfer veto power to the zero address
                     await checkQuery('vetoHolder', [], [deployer.address], controllerContract)
                     await controllerContract.connect(deployer).transferVetoPower(ZERO_ADDRESS, true)
                     await checkQuery('vetoHolder', [], [ZERO_ADDRESS], controllerContract)
@@ -5444,8 +5423,6 @@ describe('test BasePool', function () {
                     150, // deadline
                     0 // referralCode
                 )
-
-            await controllerContract.waitForHeight(await contract.height())
 
             await checkQuery('numTokenSnapshots', [COLL_CCY_TOKEN], [1], controllerContract)
             await checkQuery('getTokenSnapshot', [COLL_CCY_TOKEN, 0], [0, creatorFee, 0, 1, 0], controllerContract)

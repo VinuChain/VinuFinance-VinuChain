@@ -329,11 +329,13 @@ contract BasePool is IBasePool, Pausable, IPausable {
             loanIdx = _loanIdx + 1;
         }
         {
+            // we first retrieve the tokens because we might not have enough balance
+            // to pay the creator fee
+            collCcyToken.safeTransferFrom(msg.sender, address(this), _sendAmount);
 
             // transfer creator fee to creator in collateral ccy
             _depositRevenue(collCcyToken, _creatorFee);
 
-            collCcyToken.safeTransferFrom(msg.sender, address(this), _sendAmount);
             // transfer loanAmount in loan ccy
             loanCcyToken.safeTransfer(msg.sender, loanAmount);
         }
