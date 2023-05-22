@@ -5256,7 +5256,7 @@ describe('test BasePool', function () {
         })
     })
 
-    /*describe('loanTerms', function () {
+    describe('loanTerms', function () {
         const setups = [
             {
                 maxLoanPerColl: MAX_LOAN_PER_COLL,
@@ -5339,37 +5339,30 @@ describe('test BasePool', function () {
         ]
         for (const setup of setups) {
             it(`tests loanTerms with ${JSON.stringify(setup)}`, async function () {
-                // compile
-                const compiledContracts = await compile('contracts/Controller_parsed.solpp')
-                expect(compiledContracts).to.have.property('Controller')
-                controllerContract = compiledContracts.Controller
-                // deploy
-                controllerContract.setDeployer(deployer).setProvider(provider)
-
-                // compile
-                const compiledContracts2 = await compile('contracts/BasePool_parsed.solpp')
-                expect(compiledContracts2).to.have.property('BasePool')
-                contract = compiledContracts2.BasePool
-                // deploy
-                contract.setDeployer(deployer).setProvider(provider)
-
-                // @ts-ignore
-                await controllerContract.deploy({ params : [VOTE_TOKEN, PAUSE_THRESHOLD, UNPAUSE_THRESHOLD, WHITELIST_THRESHOLD, DEWHITELIST_THRESHOLD, String(SNAPSHOT_TOKEN_EVERY), String(CONTROLLER_LOCK_PERIOD), deployer.address ]
-                    , responseLatency: 1})
-                    expect(controllerContract.address).to.be.a('string')
-                    expect(await controllerContract.voteToken()).to.be.deep.equal(VOTE_TOKEN)
-                    expect(await controllerContract.pauseThreshold()).to.be.deep.equal(String(PAUSE_THRESHOLD))
-                    expect(await controllerContract.unpauseThreshold()).to.be.deep.equal(String(UNPAUSE_THRESHOLD))
-                    expect(await controllerContract.whitelistThreshold()).to.be.deep.equal(String(WHITELIST_THRESHOLD))
-                    expect(await controllerContract.dewhitelistThreshold()).to.be.deep.equal(String(DEWHITELIST_THRESHOLD))
-                    expect(await controllerContract.vetoHolder()).to.be.deep.equal(String(deployer.address))
-                
-                    // @ts-ignore
-                    await contract.deploy({ params: [ [LOAN_CCY_TOKEN, COLL_CCY_TOKEN], String(setup.decimals), LOAN_TENOR, // @ts-ignore
-                        String(setup.maxLoanPerColl), [String(setup.r1), String(setup.r2)], [String(setup.l1), String(setup.l2)], '1', // @ts-ignore
-                        String(setup.creatorFee), String(setup.minLiquidity), controllerContract.address, REWARD_COEFFICIENT
-                    ], responseLatency: 1})
-                await setTime(0)
+                controllerContract = await controllerContractBlueprint.deploy(
+                    VOTE_TOKEN,
+                    PAUSE_THRESHOLD,
+                    UNPAUSE_THRESHOLD,
+                    WHITELIST_THRESHOLD,
+                    DEWHITELIST_THRESHOLD,
+                    String(SNAPSHOT_TOKEN_EVERY),
+                    String(CONTROLLER_LOCK_PERIOD),
+                    deployer.address
+                )
+    
+                contract = await contractBlueprint.deploy(
+                    [LOAN_CCY_TOKEN, COLL_CCY_TOKEN],
+                    String(setup.decimals),
+                    LOAN_TENOR,
+                    String(setup.maxLoanPerColl),
+                    [String(setup.r1), String(setup.r2)],
+                    [String(setup.l1), String(setup.l2)],
+                    '1',
+                    String(setup.creatorFee),
+                    String(setup.minLiquidity),
+                    controllerContract.address, 
+                    REWARD_COEFFICIENT
+                )
 
                 const [alice] = await newUsers([[LOAN_CCY_TOKEN, setup.tests[setup.tests.length - 1].liquidity]])
 
@@ -5388,7 +5381,7 @@ describe('test BasePool', function () {
                 }
             })
         }
-    })*/
+    })
 
     describe('creatorFee', function () {
         it('checks that the Controller receives the creator fee', async function () {
@@ -5459,71 +5452,61 @@ describe('test BasePool', function () {
         })
     })
 
-    /*describe('reward requests', function () {
+    describe('reward requests', function () {
         beforeEach(async function () {
-            // compile
-            const compiledContracts = await compile('contracts/Controller_parsed.solpp')
-            expect(compiledContracts).to.have.property('Controller')
-            controllerContract = compiledContracts.Controller
-            // deploy
-            controllerContract.setDeployer(deployer).setProvider(provider)
-            // console.log(contract)
-            console.log(controllerContract.provider._provider.ERRORS)
+            controllerContract = await controllerContractBlueprint.deploy(
+                VOTE_TOKEN,
+                PAUSE_THRESHOLD,
+                UNPAUSE_THRESHOLD,
+                WHITELIST_THRESHOLD,
+                DEWHITELIST_THRESHOLD,
+                String(SNAPSHOT_TOKEN_EVERY),
+                String(CONTROLLER_LOCK_PERIOD),
+                deployer.address
+            )
 
-            // compile
-            const compiledContracts2 = await compile('contracts/BasePool_parsed.solpp')
-            expect(compiledContracts2).to.have.property('BasePool')
-            contract = compiledContracts2.BasePool
-            // deploy
-            contract.setDeployer(deployer).setProvider(provider)
-            // console.log(contract)
-            console.log(contract.provider._provider.ERRORS)
-
-            // @ts-ignore
-            await controllerContract.deploy({ params : [VOTE_TOKEN, PAUSE_THRESHOLD, UNPAUSE_THRESHOLD, WHITELIST_THRESHOLD, DEWHITELIST_THRESHOLD, String(SNAPSHOT_TOKEN_EVERY), String(CONTROLLER_LOCK_PERIOD), deployer.address ]
-                , responseLatency: 1})
-
-            // @ts-ignore
-            await contract.deploy({ params: [ [LOAN_CCY_TOKEN, COLL_CCY_TOKEN], DECIMALS, LOAN_TENOR, // @ts-ignore
-                MAX_LOAN_PER_COLL, [R1, R2], [LIQUIDITY_BND_1, LIQUIDITY_BND_2], MIN_LOAN, // @ts-ignore
-                '0', MIN_LIQUIDITY, controllerContract.address, MONE.mul(567).div(100).toString()
-            ], responseLatency: 1})
+            contract = await contractBlueprint.deploy(
+                [LOAN_CCY_TOKEN, COLL_CCY_TOKEN],
+                DECIMALS,
+                LOAN_TENOR,
+                MAX_LOAN_PER_COLL,
+                [R1, R2],
+                [LIQUIDITY_BND_1, LIQUIDITY_BND_2],
+                MIN_LOAN,
+                '0',
+                MIN_LIQUIDITY,
+                controllerContract.address, 
+                MONE.mul(567).div(100).toString()
+            )
 
             await setTime(0)
             await setTime(0, controllerContract)
 
             const [voter] = await newUsers([[VOTE_TOKEN, 200000000]])
 
-            await controllerContract.call(
-                'depositRewardSupply',
-                [],
-                { caller : voter, tokenId: VOTE_TOKEN, amount : String(100000000) }
+            await controllerContract.connect(voter).depositRewardSupply(
+                String(100000000)
             )
 
             await checkQuery('rewardSupply', [], [String(100000000)], controllerContract)
 
-            await controllerContract.call(
-                'depositVoteToken',
-                [],
-                { caller : voter, tokenId : VOTE_TOKEN, amount : String(10000) }
+            await controllerContract.connect(voter).depositVoteToken(
+                String(10000)
             )
 
-            await controllerContract.call(
-                'createProposal',
-                [contract.address, Actions.Whitelist, 150],
-                { caller : voter }
+            await controllerContract.connect(voter).createProposal(
+                contract.address,
+                Actions.Whitelist,
+                150
             )
 
-            await controllerContract.call(
-                'setVetoHolderApproval',
-                [0, true],
-                { caller : deployer }
+            await controllerContract.connect(deployer).setVetoHolderApproval(
+                0,
+                true
             )
 
-            await controllerContract.call(
-                'vote',
-                [0],
-                { caller : voter }
+            await controllerContract.connect(voter).vote(
+                0
             )
 
             await checkQuery('poolWhitelisted', [contract.address], [true], controllerContract)
@@ -6219,218 +6202,5 @@ describe('test BasePool', function () {
 
             await checkTracked()
         })
-
-        describe('failure handling', function () {
-            it('checks that rewards are re-sent correctly in case of failure', async function () {
-                const [alice] = await newUsers([[LOAN_CCY_TOKEN, 100000]])
-    
-                const coefficient = 5.67
-    
-                const time1 = 17
-                const liquidity1 = 321
-    
-                const time2 = 73
-                const liquidity2 = 1343
-                const reward2 = Math.floor((time2 - time1) * liquidity1 * coefficient)
-    
-                await setTime(time1)
-    
-                await contract.connect(alice).addLiquidity(alice.address, String(liquidity1) ,10000,0)
-    
-                await checkQuery('lastRewardTimestamp', [alice.address], [time1])
-                await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity1])
-                await checkQuery('rewardBalance', [alice.address], [0], controllerContract)
-    
-                await setTime(time2)
-
-                // Disable Controller
-                await controllerContract.connect(alice).setDisabled(true)
-    
-                await contract.connect(alice).addLiquidity(alice.address, String(liquidity2 - liquidity1) ,10000,0)
-    
-                await checkQuery('lastRewardTimestamp', [alice.address], [time2])
-                await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity2])
-                // No reward is disbursed
-                await checkQuery('rewardBalance', [alice.address], [0], controllerContract)
-
-
-                // Re-enable the Controller
-                await controllerContract.connect(alice).setDisabled(false)
-
-                await checkQuery('rewardBalance', [alice.address], [0], controllerContract)
-
-
-                // Re-send the request
-                await contract.connect(alice).resendRewardRequest(0)
-
-                await checkQuery('rewardBalance', [alice.address], [reward2], controllerContract)
-            })
-
-            it('re-sends a reward request when authorized', async function () {
-                const [alice, bob] = await newUsers([[LOAN_CCY_TOKEN, 100000]], [])
-
-                const bits = approvalBits(['resendRewardRequest'])
-                console.log('Bits:', bits)
-                await contract.connect(alice).setApprovals(bob.address, bits)
-    
-                const coefficient = 5.67
-    
-                const time1 = 17
-                const liquidity1 = 321
-    
-                const time2 = 73
-                const liquidity2 = 1343
-                const reward2 = Math.floor((time2 - time1) * liquidity1 * coefficient)
-    
-                await setTime(time1)
-    
-                await contract.connect(alice).addLiquidity(alice.address, String(liquidity1) ,10000,0)
-    
-                await checkQuery('lastRewardTimestamp', [alice.address], [time1])
-                await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity1])
-                await checkQuery('rewardBalance', [alice.address], [0], controllerContract)
-    
-                await setTime(time2)
-
-                // Disable Controller
-                await controllerContract.connect(alice).setDisabled(true)
-    
-                await contract.connect(alice).addLiquidity(alice.address, String(liquidity2 - liquidity1) ,10000,0)
-    
-                await checkQuery('lastRewardTimestamp', [alice.address], [time2])
-                await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity2])
-                // No reward is disbursed
-                await checkQuery('rewardBalance', [alice.address], [0], controllerContract)
-
-
-                // Re-enable the Controller
-                await controllerContract.connect(alice).setDisabled(false)
-
-                await checkQuery('rewardBalance', [alice.address], [0], controllerContract)
-
-
-                // Re-send the request
-                await contract.connect(bob).resendRewardRequest(0)
-
-                await checkQuery('rewardBalance', [alice.address], [reward2], controllerContract)
-            })
-
-            it('fails to re-send a reward request in case the first one was accepted', async function () {
-                const [alice] = await newUsers([[LOAN_CCY_TOKEN, 100000]])
-    
-                const coefficient = 5.67
-    
-                const time1 = 17
-                const liquidity1 = 321
-    
-                const time2 = 73
-                const liquidity2 = 1343
-                const reward2 = Math.floor((time2 - time1) * liquidity1 * coefficient)
-    
-                await setTime(time1)
-    
-                await contract.connect(alice).addLiquidity(alice.address, String(liquidity1) ,10000,0)
-    
-                await checkQuery('lastRewardTimestamp', [alice.address], [time1])
-                await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity1])
-                await checkQuery('rewardBalance', [alice.address], [0], controllerContract)
-    
-                await setTime(time2)
-    
-                await contract.connect(alice).addLiquidity(alice.address, String(liquidity2 - liquidity1) ,10000,0)
-    
-                await checkQuery('lastRewardTimestamp', [alice.address], [time2])
-                await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity2])
-                // Since the contract is not disabled, the reward is disbursed
-                await checkQuery('rewardBalance', [alice.address], [reward2], controllerContract)
-
-
-                // Re-send the request
-                await contract.connect(alice).resendRewardRequest(0)
-    
-    
-                // Nothing happens
-                await checkQuery('lastRewardTimestamp', [alice.address], [time2])
-                await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity2])
-                await checkQuery('rewardBalance', [alice.address], [reward2], controllerContract)
-            })
-
-            it('fails to re-send a non-existent reward request', async function () {
-                const [alice] = await newUsers([[LOAN_CCY_TOKEN, 100000]])
-    
-                const coefficient = 5.67
-    
-                const time1 = 17
-                const liquidity1 = 321
-    
-                const time2 = 73
-                const liquidity2 = 1343
-                const reward2 = Math.floor((time2 - time1) * liquidity1 * coefficient)
-    
-                await setTime(time1)
-    
-                await contract.connect(alice).addLiquidity(alice.address, String(liquidity1) ,10000,0)
-    
-                await checkQuery('lastRewardTimestamp', [alice.address], [time1])
-                await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity1])
-                await checkQuery('rewardBalance', [alice.address], [0], controllerContract)
-
-
-                await expect(
-                    contract.connect(alice).resendRewardRequest(0)
-                ).to.be.eventually.rejectedWith('revert')
-            })
-
-            it('fails to re-send a reward request without being authorized', async function () {
-                const [alice, bob] = await newUsers([[LOAN_CCY_TOKEN, 100000]], [])
-
-                const bits = approvalBits(['repay', 'addLiquidity', 'removeLiquidity', 'claim', 'forceRewardUpdate'])
-                console.log('Bits:', bits)
-                await contract.connect(alice).setApprovals(bob.address, bits)
-    
-                const coefficient = 5.67
-    
-                const time1 = 17
-                const liquidity1 = 321
-    
-                const time2 = 73
-                const liquidity2 = 1343
-                const reward2 = Math.floor((time2 - time1) * liquidity1 * coefficient)
-    
-                await setTime(time1)
-    
-                await contract.connect(alice).addLiquidity(alice.address, String(liquidity1) ,10000,0)
-    
-                await checkQuery('lastRewardTimestamp', [alice.address], [time1])
-                await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity1])
-                //await controllerContract.waitForHeight(await contract.height())
-                //await controllerContract.waitForHeight((await contract.height()) + 1)
-                await checkQuery('rewardBalance', [alice.address], [0], controllerContract)
-    
-                await setTime(time2)
-
-                // Disable Controller
-                await controllerContract.connect(alice).setDisabled(true)
-    
-                await contract.connect(alice).addLiquidity(alice.address, String(liquidity2 - liquidity1) ,10000,0)
-    
-                await checkQuery('lastRewardTimestamp', [alice.address], [time2])
-                await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity2])
-                // No reward is disbursed
-                await checkQuery('rewardBalance', [alice.address], [0], controllerContract)
-
-
-                // Re-enable the Controller
-                await controllerContract.connect(alice).setDisabled(false)
-
-                await checkQuery('rewardBalance', [alice.address], [0], controllerContract)
-
-
-                // Re-send the request
-                await expect(
-                    contract.connect(bob).resendRewardRequest(0)
-                ).to.be.eventually.rejectedWith('revert')
-            })
-        })
-    })*/
+    })
 });
