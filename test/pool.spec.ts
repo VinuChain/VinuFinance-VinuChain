@@ -92,25 +92,33 @@ const approvalBits = (permissions : Array<string>) => {
     return bits
 }
 
-const checkEvents = async (correct : Array<Object>, referenceContract : any | undefined = undefined) => {
-
-    return;
+const checkEvents = async (tx, correct : Array<Object>, referenceContract : any | undefined = undefined) => {
     if (!referenceContract) {
         referenceContract = contract
     }
-    const result = await getPastEvents(referenceContract, 'allEvents', {fromHeight: 0, toHeight: 0})
-    expect(result).to.be.an('array').with.length(correct.length)
-    for (let i = 0; i < correct.length; i++) {
-        const correctItem = {}
-        const parsedResult = {}
-        for (const key of Object.keys(correct[i])) {
-            if (!isNumberObject(key)) {
-                correctItem[key] = String(correct[i][key])
-                parsedResult[key] = String(result[i].returnValues[key])
+    const receipt = await tx.wait()
 
+    let i = 0
+    for (const event of receipt.events) {
+        if (event.address == referenceContract.address) {
+            // console.log(Object.entries(event))
+            // console.log(`Event ${event.event} with args ${event.args}`)
+
+            const result = event.args
+            
+            const correctItem = {}
+            const parsedResult = {}
+            for (const key of Object.keys(correct[i])) {
+                if (!isNumberObject(key)) {
+                    correctItem[key] = String(correct[i][key])
+                    parsedResult[key] = String(result[key])
+
+                }
             }
+            expect(parsedResult).to.be.deep.equal(correctItem)
+
+            i++
         }
-        expect(parsedResult).to.be.deep.equal(correctItem)
     }
 }
 
@@ -399,7 +407,7 @@ describe('test BasePool', function () {
 
                 console.log(alice.address)
 
-                await contract.connect(alice).addLiquidity(alice.address, '5000' ,150,0)
+                const tx1 = await contract.connect(alice).addLiquidity(alice.address, '5000' ,150,0)
 
                 console.log('Successfully added liquidity')
 
@@ -417,7 +425,7 @@ describe('test BasePool', function () {
                     ['1', String(MIN_LPING_PERIOD), '0', [ '1000' ], []]
                 )
 
-                await checkEvents([
+                await checkEvents(tx1, [
                     // DEFAULT_CONSTRUCTOR_EVENT,
                     {
                         lp : alice.address,
@@ -435,11 +443,11 @@ describe('test BasePool', function () {
             it('adds liquidity multiple times', async function () {
                 const [alice] = await newUsers([ [LOAN_CCY_TOKEN, 10000] ])
 
-                await contract.connect(alice).addLiquidity(alice.address, '5000' ,150,0)
+                const tx1 = await contract.connect(alice).addLiquidity(alice.address, '5000' ,150,0)
                 // If this is the first time adding liquidity, the shares are 1000 * deposited / minLiquidity
                 const firstShares = 1000 * 5000 / MIN_LIQUIDITY
 
-                await checkEvents([
+                await checkEvents(tx1, [
                     // DEFAULT_CONSTRUCTOR_EVENT,
                     {
                         lp : alice.address,
@@ -453,7 +461,7 @@ describe('test BasePool', function () {
                     }
                 ])
 
-                await contract.connect(alice).addLiquidity(alice.address, '2000' ,150,0)
+                const tx2 = await contract.connect(alice).addLiquidity(alice.address, '2000' ,150,0)
 
                 // More shares, using deposited / liquidity * nShares
                 const secondShares = 2000 / 5000 * firstShares
@@ -471,7 +479,7 @@ describe('test BasePool', function () {
                     ['1', String(MIN_LPING_PERIOD), '0', [ '1400' ], []]
                 )
 
-                await checkEvents([
+                await checkEvents(tx2, [
                     // DEFAULT_CONSTRUCTOR_EVENT,
                     {
                         lp : alice.address,
@@ -489,7 +497,7 @@ describe('test BasePool', function () {
             it('adds liquidity with rounding', async function () {
                 const [alice] = await newUsers([ [LOAN_CCY_TOKEN, 10000] ])
 
-                await contract.connect(alice).addLiquidity(alice.address, '5004' ,150,0)
+                const tx1 = await contract.connect(alice).addLiquidity(alice.address, '5004' ,150,0)
 
                 // If this is the first time adding liquidity, the shares are 1000 * deposited / minLiquidity
                 // Note that MIN_LIQUIDITY / 1000 = 5, so you get slightly less shares than expected
@@ -502,7 +510,7 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await checkEvents([
+                await checkEvents(tx1, [
                     {
                         lp : alice.address,
                         amount : 5004,
@@ -525,7 +533,7 @@ describe('test BasePool', function () {
                 console.log('Bits:', bits)
                 await contract.connect(alice).setApprovals(bob.address, bits)
 
-                await contract.connect(bob).addLiquidity(alice.address, '5000' ,150,0)
+                const tx1 = await contract.connect(bob).addLiquidity(alice.address, '5000' ,150,0)
 
                 // If this is the first time adding liquidity, the shares are 1000 * deposited / minLiquidity
                 const newShares = 1000 * 5000 / MIN_LIQUIDITY
@@ -537,7 +545,7 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await checkEvents([
+                await checkEvents(tx1, [
                     // DEFAULT_CONSTRUCTOR_EVENT,
                     {
                         lp : alice.address,
@@ -599,7 +607,7 @@ describe('test BasePool', function () {
 
                 await setTime(MIN_LPING_PERIOD + 1)
 
-                await contract.connect(alice).removeLiquidity(
+                const tx1 = await contract.connect(alice).removeLiquidity(
                         alice.address, // onBehalfOf
                         200 // shares
                     )
@@ -616,7 +624,7 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await checkEvents([
+                await checkEvents(tx1, [
                     {
                         lp : alice.address,
                         amount : withdrawnLiquidity,
@@ -681,7 +689,7 @@ describe('test BasePool', function () {
 
                 await setTime(2 * (MIN_LPING_PERIOD + 1))
 
-                await contract.connect(alice).removeLiquidity(
+                const tx1 = await contract.connect(alice).removeLiquidity(
                         alice.address, // onBehalfOf
                         200 // shares
                     )
@@ -701,7 +709,7 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await checkEvents([
+                await checkEvents(tx1, [
                     {
                         lp : alice.address,
                         amount : withdrawnLiquidity2,
@@ -722,7 +730,7 @@ describe('test BasePool', function () {
 
                 await setTime(MIN_LPING_PERIOD + 1)
 
-                await contract.connect(alice).removeLiquidity(
+                const tx1 = await contract.connect(alice).removeLiquidity(
                         alice.address, // onBehalfOf
                         3000 // shares
                     )
@@ -740,7 +748,7 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await checkEvents([
+                await checkEvents(tx1, [
                     {
                         lp : alice.address,
                         amount : withdrawnLiquidity,
@@ -763,7 +771,7 @@ describe('test BasePool', function () {
 
                 await setTime(MIN_LPING_PERIOD + 1)
 
-                await contract.connect(bob).removeLiquidity(
+                const tx1 = await contract.connect(bob).removeLiquidity(
                         alice.address, // onBehalfOf
                         200 // shares
                     )
@@ -780,7 +788,7 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await checkEvents([
+                await checkEvents(tx1, [
                     {
                         lp : alice.address,
                         amount : withdrawnLiquidity,
@@ -856,7 +864,7 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
 
-                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                const tx1 = await contract.connect(bob).borrow(bob.address, // onBehalfOf
                         String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
@@ -870,7 +878,7 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await checkEvents([{
+                await checkEvents(tx1, [{
                     borrower : bob.address,
                     loanIdx : 1,
                     collateral : collateralPledge,
@@ -898,14 +906,14 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic addLiquidity+borrow
                 await setTime(1)
 
-                await contract.connect(alice).borrow(alice.address, // onBehalfOf
+                const tx1 = await contract.connect(alice).borrow(alice.address, // onBehalfOf
                         String(collateralPledge), 200, // minLoanLimit
                         10000, // maxRepayLimit
                         150, // deadline
                         0 // referralCode
                     )
 
-                await checkEvents([{
+                await checkEvents(tx1, [{
                     borrower : alice.address,
                     loanIdx : 1,
                     collateral : collateralPledge,
@@ -1091,12 +1099,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
 
-                await contract.connect(bob).repay(
+                const tx1 = await contract.connect(bob).repay(
                     1,
                     bob.address
                 )
 
-                await checkEvents([
+                await checkEvents(tx1, [
                     {
                         borrower : bob.address,
                         loanIdx : 1,
@@ -1150,12 +1158,12 @@ describe('test BasePool', function () {
                 // The contract doesn't allow atomic borrow + repay
                 await setTime(2)
 
-                await contract.connect(charlie).repay(
+                const tx1 = await contract.connect(charlie).repay(
                     1,
                     bob.address
                 )
 
-                await checkEvents([
+                await checkEvents(tx1, [
                     {
                         borrower : bob.address,
                         loanIdx : 1,
@@ -1502,7 +1510,7 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await contract.connect(alice).claim(
+                const tx1 = await contract.connect(alice).claim(
                         alice.address,
                         [1],
                         0, // Don't reinvest
@@ -1522,7 +1530,7 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await checkEvents([{
+                await checkEvents(tx1, [{
                     lp : alice.address,
                     loanIdxs : [1],
                     repayments : repaymentAmount,
@@ -1599,7 +1607,7 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await contract.connect(alice).claim(
+                const tx1 = await contract.connect(alice).claim(
                         alice.address,
                         [1],
                         1, // Reinvest
@@ -1619,7 +1627,7 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await checkEvents([
+                await checkEvents(tx1, [
                     {
                         lp : alice.address,
                         repayments : repaymentAmount,
@@ -1749,7 +1757,7 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await contract.connect(alice).claim(
+                const tx1 = await contract.connect(alice).claim(
                         alice.address,
                         [1, 2],
                         1, // Reinvest
@@ -1769,7 +1777,7 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await checkEvents([
+                await checkEvents(tx1, [
                     {
                         lp : alice.address,
                         repayments : repaymentAmount + repaymentAmount2,
@@ -1879,7 +1887,7 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await contract.connect(alice).claim(
+                const tx1 = await contract.connect(alice).claim(
                         alice.address,
                         [1],
                         0, // Don't reinvest
@@ -1904,7 +1912,7 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await checkEvents([{
+                await checkEvents(tx1, [{
                     lp : alice.address,
                     loanIdxs : [1],
                     repayments : repaymentAlice,
@@ -1912,7 +1920,7 @@ describe('test BasePool', function () {
                 }])
                 expect(await loanCcyTokenContract.balanceOf(alice.address)).to.be.deep.equal(String(repaymentAlice))
 
-                await contract.connect(bob).claim(
+                const tx2 = await contract.connect(bob).claim(
                         bob.address,
                         [1],
                         0, // Don't reinvest
@@ -1937,7 +1945,7 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await checkEvents([{
+                await checkEvents(tx2, [{
                     lp : bob.address,
                     loanIdxs : [1],
                     repayments : repaymentBob,
@@ -2039,7 +2047,7 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await contract.connect(alice).claim(
+                const tx1 = await contract.connect(alice).claim(
                         alice.address,
                         [1],
                         1, // Reinvest
@@ -2063,7 +2071,7 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await checkEvents([
+                await checkEvents(tx1, [
                     {
                         lp : alice.address,
                         repayments : repaymentAlice,
@@ -2080,7 +2088,7 @@ describe('test BasePool', function () {
                 ])
                 expect(await loanCcyTokenContract.balanceOf(alice.address)).to.be.deep.equal(String(0))
 
-                await contract.connect(bob).claim(
+                const tx2 = await contract.connect(bob).claim(
                         bob.address,
                         [1],
                         1, // Reinvest
@@ -2104,7 +2112,7 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await checkEvents([
+                await checkEvents(tx2, [
                     {
                         lp : bob.address,
                         repayments : repaymentBob,
@@ -2496,7 +2504,7 @@ describe('test BasePool', function () {
 
                 const sharesBeforeClaimingAlice = currentAliceShares
 
-                await contract.connect(alice).claim(
+                const tx1 = await contract.connect(alice).claim(
                         alice.address,
                         [1],
                         1, // Reinvest
@@ -2531,7 +2539,7 @@ describe('test BasePool', function () {
                 )
 
 
-                await checkEvents([
+                await checkEvents(tx1, [
                     {
                         lp : alice.address,
                         repayments : repaymentAlice,
@@ -2583,7 +2591,7 @@ describe('test BasePool', function () {
 
                 const sharesBeforeClaimingBob = currentBobShares
 
-                await contract.connect(bob).claim(
+                const tx2 = await contract.connect(bob).claim(
                         bob.address,
                         [1],
                         1, // Reinvest
@@ -2615,7 +2623,7 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await checkEvents([
+                await checkEvents(tx2, [
                     {
                         lp : bob.address,
                         repayments : repaymentBob,
@@ -2727,14 +2735,14 @@ describe('test BasePool', function () {
                     charlie.address
                 )
 
-                await contract.connect(alice).claim(
+                const tx1 = await contract.connect(alice).claim(
                         alice.address,
                         [1, 2],
                         0, // Don't reinvest
                         150
                     )
 
-                await checkEvents([
+                await checkEvents(tx1, [
                     {
                         lp : alice.address,
                         loanIdxs : [1, 2],
@@ -2760,14 +2768,14 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await contract.connect(bob).claim(
+                const tx2 = await contract.connect(bob).claim(
                         bob.address,
                         [1, 2],
                         0, // Don't reinvest
                         150
                     )
 
-                await checkEvents([
+                await checkEvents(tx2, [
                     {
                         lp : bob.address,
                         loanIdxs : [1, 2],
@@ -2855,14 +2863,14 @@ describe('test BasePool', function () {
                     charlie.address
                 )
 
-                await contract.connect(alice).claim(
+                const tx1 = await contract.connect(alice).claim(
                         alice.address,
                         [1, 2],
                         1, // Reinvest
                         150
                     )
 
-                await checkEvents([
+                await checkEvents(tx1, [
                     {
                         lp : alice.address,
                         repayments : repaymentAlice,
@@ -2895,14 +2903,14 @@ describe('test BasePool', function () {
                     ]
                 )
 
-                await contract.connect(bob).claim(
+                const tx2 = await contract.connect(bob).claim(
                         bob.address,
                         [1, 2],
                         1, // Reinvest
                         150
                     )
 
-                await checkEvents([
+                await checkEvents(tx2, [
                     {
                         lp : bob.address,
                         repayments : repaymentBob,
@@ -2961,14 +2969,14 @@ describe('test BasePool', function () {
                 // Cause the loan to expire
                 await setTime(LOAN_TENOR + 2)
 
-                await contract.connect(alice).claim(
+                const tx1 = await contract.connect(alice).claim(
                         alice.address,
                         [1],
                         0,
                         150
                     )
 
-                await checkEvents([{
+                await checkEvents(tx1, [{
                     lp : alice.address,
                     loanIdxs : [1],
                     repayments : 0,
@@ -3018,14 +3026,14 @@ describe('test BasePool', function () {
                     bob.address
                 )
 
-                await contract.connect(charlie).claim(
+                const tx1 = await contract.connect(charlie).claim(
                         alice.address,
                         [1],
                         0,
                         150
                     )
 
-                await checkEvents([{
+                await checkEvents(tx1, [{
                     lp : alice.address,
                     loanIdxs : [1],
                     repayments : repaymentAmount,
@@ -3197,9 +3205,9 @@ describe('test BasePool', function () {
                 it('deposits the vote token', async function () {
                     const [alice] = await newUsers([ [VOTE_TOKEN, 1000] ])
                     
-                    await controllerContract.connect(alice).depositVoteToken(String(200))
+                    const tx1 = await controllerContract.connect(alice).depositVoteToken(String(200))
 
-                    await checkEvents([{
+                    await checkEvents(tx1, [{
                         account : alice.address,
                         amount : 200,
                         newBalance : 200,
@@ -3230,7 +3238,7 @@ describe('test BasePool', function () {
 
                     await setTime(19, controllerContract)
 
-                    await controllerContract.connect(alice).withdrawVoteToken(String(50))
+                    const tx1 = await controllerContract.connect(alice).withdrawVoteToken(String(50))
 
                     expect(await controllerContract.numAccountSnapshots(alice.address)).to.be.deep.equal('2')
                     expect(await controllerContract.getAccountSnapshot(alice.address, 0)).to.be.deep.equal(
@@ -3243,7 +3251,7 @@ describe('test BasePool', function () {
                     expect(await controllerContract.voteTokenBalance(alice.address)).to.be.deep.equal('150')
                     expect(await voteTokenContract.balanceOf(alice.address)).to.be.deep.equal(String(1000 - 150))
 
-                    await checkEvents([
+                    await checkEvents(tx1, [
                         {
                             account : alice.address,
                             amount : 50,
@@ -3299,9 +3307,9 @@ describe('test BasePool', function () {
                 it('creates a proposal', async function ()  {
                     const [alice] = await newUsers([])
 
-                    await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
+                    const tx1 = await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
 
-                    await checkEvents([{
+                    await checkEvents(tx1, [{
                         proposalIdx : 0,
                         creator : alice.address,
                         target : contract.address,
@@ -3344,9 +3352,9 @@ describe('test BasePool', function () {
 
                     await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
 
-                    await controllerContract.connect(alice).vote(0)
+                    const tx1 = await controllerContract.connect(alice).vote(0)
 
-                    await checkEvents([{
+                    await checkEvents(tx1, [{
                         proposalIdx : 0,
                         voter : alice.address,
                         votes : 100,
@@ -3370,18 +3378,18 @@ describe('test BasePool', function () {
                     await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
                     await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
 
-                    await controllerContract.connect(alice).vote(0)
+                    const tx1 = await controllerContract.connect(alice).vote(0)
 
-                    await checkEvents([{
+                    await checkEvents(tx1, [{
                         proposalIdx : 0,
                         voter : alice.address,
                         votes : 100,
                         newTotalVotes : 100
                     }], controllerContract)
 
-                    await controllerContract.connect(alice).vote(1)
+                    const tx2 = await controllerContract.connect(alice).vote(1)
 
-                    await checkEvents([{
+                    await checkEvents(tx2, [{
                         proposalIdx : 1,
                         voter : alice.address,
                         votes : 100,
@@ -3406,9 +3414,9 @@ describe('test BasePool', function () {
                     await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
 
                     await controllerContract.connect(alice).vote(0)
-                    await controllerContract.connect(alice).removeVote(0)
+                    const tx1 = await controllerContract.connect(alice).removeVote(0)
 
-                    await checkEvents([{
+                    await checkEvents(tx1, [{
                         proposalIdx : 0,
                         voter : alice.address,
                         votes : 100,
@@ -3433,9 +3441,9 @@ describe('test BasePool', function () {
 
                     await controllerContract.connect(alice).vote(0)
                     await controllerContract.connect(alice).removeVote(0)
-                    await controllerContract.connect(alice).vote(0)
+                    const tx1 = await controllerContract.connect(alice).vote(0)
 
-                    await checkEvents([{
+                    await checkEvents(tx1, [{
                         proposalIdx : 0,
                         voter : alice.address,
                         votes : 100,
@@ -3458,9 +3466,9 @@ describe('test BasePool', function () {
 
                     await controllerContract.connect(alice).createProposal(contract.address, Actions.Pause, 150)
 
-                    await controllerContract.connect(bob).vote(0)
+                    const tx1 = await controllerContract.connect(bob).vote(0)
 
-                    await checkEvents([
+                    await checkEvents(tx1, [
                         {
                             proposalIdx : 0,
                             voter : bob.address,
@@ -3498,9 +3506,9 @@ describe('test BasePool', function () {
 
                     // Unpause
                     await controllerContract.connect(alice).createProposal(contract.address, Actions.Unpause, 150)
-                    await controllerContract.connect(bob).vote(1)
+                    const tx1 = await controllerContract.connect(bob).vote(1)
 
-                    await checkEvents([
+                    await checkEvents(tx1, [
                         {
                             proposalIdx : 1,
                             voter : bob.address,
@@ -3534,9 +3542,9 @@ describe('test BasePool', function () {
 
                     expect(await contract.paused()).to.be.deep.equal(true)
 
-                    await controllerContract.connect(bob).removeVote(0)
+                    const tx1 = await controllerContract.connect(bob).removeVote(0)
 
-                    await checkEvents([{
+                    await checkEvents(tx1, [{
                         proposalIdx : 0,
                         voter : bob.address,
                         votes : 900,
@@ -3567,9 +3575,9 @@ describe('test BasePool', function () {
 
                     await controllerContract.connect(bob).removeVote(0)
 
-                    await controllerContract.connect(bob).withdrawVoteToken(String(50))
+                    const tx1 = await controllerContract.connect(bob).withdrawVoteToken(String(50))
 
-                    await checkEvents([
+                    await checkEvents(tx1, [
                         {
                             account : bob.address,
                             amount : 50,
@@ -3730,9 +3738,9 @@ describe('test BasePool', function () {
                     await setTime(19, controllerContract)
                     await controllerContract.connect(alice).depositVoteToken(String(50))
 
-                    await controllerContract.connect(alice).depositRevenue(COLL_CCY_TOKEN, '100')
+                    const tx1 = await controllerContract.connect(alice).depositRevenue(COLL_CCY_TOKEN, '100')
 
-                    await checkEvents([
+                    await checkEvents(tx1, [
                         {
                             tokenId : COLL_CCY_TOKEN,
                             tokenSnapshotIdx : 0,
@@ -3919,10 +3927,10 @@ describe('test BasePool', function () {
                     // Bob claims
                     console.log('Checking before...')
                     expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal('0')
-                    await controllerContract.connect(bob).claimToken(LOAN_CCY_TOKEN, 0, 0)
+                    const tx1 = await controllerContract.connect(bob).claimToken(LOAN_CCY_TOKEN, 0, 0)
                     expect(await controllerContract.hasClaimedSnapshot(LOAN_CCY_TOKEN, 0, bob.address)).to.be.deep.equal(true)
 
-                    await checkEvents([
+                    await checkEvents(tx1, [
                         {
                             tokenId : LOAN_CCY_TOKEN,
                             account : bob.address,
@@ -3939,10 +3947,10 @@ describe('test BasePool', function () {
                     expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal('200')
 
                     // Charlie claims
-                    await controllerContract.connect(charlie).claimToken(LOAN_CCY_TOKEN, 0, 0)
+                    const tx2 = await controllerContract.connect(charlie).claimToken(LOAN_CCY_TOKEN, 0, 0)
                     expect(await controllerContract.hasClaimedSnapshot(LOAN_CCY_TOKEN, 0, charlie.address)).to.be.deep.equal(true)
 
-                    await checkEvents([
+                    await checkEvents(tx2, [
                         {
                             tokenId : LOAN_CCY_TOKEN,
                             account : charlie.address,
@@ -3990,11 +3998,11 @@ describe('test BasePool', function () {
                     )
 
                     // Bob claims
-                    await controllerContract.connect(bob).claimToken(LOAN_CCY_TOKEN, 0, 0)
+                    const tx1 = await controllerContract.connect(bob).claimToken(LOAN_CCY_TOKEN, 0, 0)
                     console.log('Bob 0')
                     expect(await controllerContract.hasClaimedSnapshot(LOAN_CCY_TOKEN, 0, bob.address)).to.be.deep.equal(true)
 
-                    await checkEvents([
+                    await checkEvents(tx1, [
                         {
                             tokenId : LOAN_CCY_TOKEN,
                             account : bob.address,
@@ -4011,11 +4019,11 @@ describe('test BasePool', function () {
                     expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal('200')
 
                     // Charlie claims
-                    await controllerContract.connect(charlie).claimToken(LOAN_CCY_TOKEN, 0, 0)
+                    const tx2 = await controllerContract.connect(charlie).claimToken(LOAN_CCY_TOKEN, 0, 0)
                     console.log('Charlie 0')
                     expect(await controllerContract.hasClaimedSnapshot(LOAN_CCY_TOKEN, 0, charlie.address)).to.be.deep.equal(true)
 
-                    await checkEvents([
+                    await checkEvents(tx2, [
                         {
                             tokenId : LOAN_CCY_TOKEN,
                             account : charlie.address,
@@ -4034,11 +4042,11 @@ describe('test BasePool', function () {
                     // Second snapshot claiming
 
                     // Bob claims
-                    await controllerContract.connect(bob).claimToken(LOAN_CCY_TOKEN, 1, 1)
+                    const tx3 = await controllerContract.connect(bob).claimToken(LOAN_CCY_TOKEN, 1, 1)
                     console.log('Bob 1')
                     expect(await controllerContract.hasClaimedSnapshot(LOAN_CCY_TOKEN, 1, bob.address)).to.be.deep.equal(true)
 
-                    await checkEvents([
+                    await checkEvents(tx3, [
                         {
                             tokenId : LOAN_CCY_TOKEN,
                             account : bob.address,
@@ -4055,11 +4063,11 @@ describe('test BasePool', function () {
                     expect(await loanCcyTokenContract.balanceOf(bob.address)).to.be.deep.equal(String(200 + 600))
 
                     // Charlie claims
-                    await controllerContract.connect(charlie).claimToken(LOAN_CCY_TOKEN, 1, 1)
+                    const tx4 = await controllerContract.connect(charlie).claimToken(LOAN_CCY_TOKEN, 1, 1)
                     console.log('Charlie 1')
                     expect(await controllerContract.hasClaimedSnapshot(LOAN_CCY_TOKEN, 1, charlie.address)).to.be.deep.equal(true)
 
-                    await checkEvents([
+                    await checkEvents(tx4, [
                         {
                             tokenId : LOAN_CCY_TOKEN,
                             account : charlie.address,
@@ -4261,13 +4269,13 @@ describe('test BasePool', function () {
                     await checkQuery('getTokenSnapshot', [LOAN_CCY_TOKEN, 1], [1000, 3000, 0, 100, 0], controllerContract)
 
                     // Bob claims
-                    await controllerContract.connect(bob).claimMultiple(
+                    const tx1 = await controllerContract.connect(bob).claimMultiple(
                         [LOAN_CCY_TOKEN, LOAN_CCY_TOKEN],
                         [0, 1],
                         [0, 1]
                     )
 
-                    await checkEvents([
+                    await checkEvents(tx1, [
                         {
                             tokenId : LOAN_CCY_TOKEN,
                             account : bob.address,
@@ -4287,13 +4295,13 @@ describe('test BasePool', function () {
                     ], controllerContract)
 
                     // Charlie claims
-                    await controllerContract.connect(charlie).claimMultiple(
+                    const tx2 = await controllerContract.connect(charlie).claimMultiple(
                         [LOAN_CCY_TOKEN, LOAN_CCY_TOKEN],
                         [0, 1],
                         [0, 1]
                     )
 
-                    await checkEvents([
+                    await checkEvents(tx2, [
                         {
                             tokenId : LOAN_CCY_TOKEN,
                             account : charlie.address,
@@ -4368,14 +4376,14 @@ describe('test BasePool', function () {
                     await checkQuery('getTokenSnapshot', [LOAN_CCY_TOKEN, 1], [1000, 3000, 0, 100, 0], controllerContract)
 
                     // Bob claims the first
-                    await controllerContract.connect(bob).claimMultiple(
+                    const tx1 = await controllerContract.connect(bob).claimMultiple(
                         [LOAN_CCY_TOKEN],
                         [0],
                         [0]
                     )
                     
 
-                    await checkEvents([
+                    await checkEvents(tx1, [
                         {
                             tokenId : LOAN_CCY_TOKEN,
                             account : bob.address,
@@ -4387,13 +4395,13 @@ describe('test BasePool', function () {
                     ], controllerContract)
 
                     // Charlie claims the first
-                    await controllerContract.connect(charlie).claimMultiple(
+                    const tx2 = await controllerContract.connect(charlie).claimMultiple(
                         [LOAN_CCY_TOKEN],
                         [0],
                         [0]
                     )
 
-                    await checkEvents([
+                    await checkEvents(tx2, [
                         {
                             tokenId : LOAN_CCY_TOKEN,
                             account : charlie.address,
@@ -4405,14 +4413,14 @@ describe('test BasePool', function () {
                     ], controllerContract)
 
                     // Bob claims the second
-                    await controllerContract.connect(bob).claimMultiple(
+                    const tx3 = await controllerContract.connect(bob).claimMultiple(
                         [LOAN_CCY_TOKEN],
                         [1],
                         [1]
                     )
                     
 
-                    await checkEvents([
+                    await checkEvents(tx3, [
                         {
                             tokenId : LOAN_CCY_TOKEN,
                             account : bob.address,
@@ -4424,13 +4432,13 @@ describe('test BasePool', function () {
                     ], controllerContract)
 
                     // Charlie claims the second
-                    await controllerContract.connect(charlie).claimMultiple(
+                    const tx4 = await controllerContract.connect(charlie).claimMultiple(
                         [LOAN_CCY_TOKEN],
                         [1],
                         [1]
                     )
 
-                    await checkEvents([
+                    await checkEvents(tx4, [
                         {
                             tokenId : LOAN_CCY_TOKEN,
                             account : charlie.address,
@@ -4722,11 +4730,11 @@ describe('test BasePool', function () {
                     const rewardCoefficient = MONE.mul(135).div(100).toString() // 1.35
                     const reward = 2252248 // Precomputed
 
-                    await controllerContract.connect(charlie).requestTokenDistribution(dan.address, liquidity, duration, rewardCoefficient)
+                    const tx1 = await controllerContract.connect(charlie).requestTokenDistribution(dan.address, liquidity, duration, rewardCoefficient)
 
                     await checkQuery('rewardSupply', [], [String(10000000 - reward)], controllerContract)
                     
-                    await checkEvents([{
+                    await checkEvents(tx1, [{
                         account : dan.address,
                         liquidity,
                         duration,
@@ -4772,11 +4780,11 @@ describe('test BasePool', function () {
                     const rewardCoefficient = MONE.mul(135).div(100).toString() // 1.35
                     const reward = 2252248 // Precomputed
 
-                    await controllerContract.connect(charlie).requestTokenDistribution(dan.address, liquidity, duration, rewardCoefficient)
+                    const tx1 = await controllerContract.connect(charlie).requestTokenDistribution(dan.address, liquidity, duration, rewardCoefficient)
 
                     await checkQuery('rewardSupply', [], [String(10000000 - reward)], controllerContract)
                     
-                    await checkEvents([{
+                    await checkEvents(tx1, [{
                         account : dan.address,
                         liquidity,
                         duration,
@@ -4788,12 +4796,12 @@ describe('test BasePool', function () {
 
                     await setTime(123, controllerContract)
 
-                    await controllerContract.connect(dan).collectReward(true)
+                    const tx2 = await controllerContract.connect(dan).collectReward(true)
                     expect(await voteTokenContract.balanceOf(dan.address)).to.be.deep.equal(String(0))
                     await checkQuery('voteTokenBalance', [dan.address], [reward], controllerContract)
                     await checkQuery('lastDepositTimestamp', [dan.address], [123], controllerContract)
 
-                    await checkEvents([{
+                    await checkEvents(tx2, [{
                         account : dan.address,
                         amount : reward,
                         newBalance : reward,
@@ -4815,10 +4823,10 @@ describe('test BasePool', function () {
                     const [alice] = await newUsers([])
 
                     await checkQuery('vetoHolder', [], [deployer.address], controllerContract)
-                    await controllerContract.connect(deployer).transferVetoPower(alice.address, false)
+                    const tx1 = await controllerContract.connect(deployer).transferVetoPower(alice.address, false)
                     await checkQuery('vetoHolder', [], [alice.address], controllerContract)
 
-                    await checkEvents([{
+                    await checkEvents(tx1, [{
                         oldHolder: deployer.address,
                         newHolder : alice.address
                     }], controllerContract)
@@ -4826,10 +4834,10 @@ describe('test BasePool', function () {
 
                 it('transfers the veto power to the zero-address', async function () {
                     await checkQuery('vetoHolder', [], [deployer.address], controllerContract)
-                    await controllerContract.connect(deployer).transferVetoPower(ZERO_ADDRESS, true)
+                    const tx1 = await controllerContract.connect(deployer).transferVetoPower(ZERO_ADDRESS, true)
                     await checkQuery('vetoHolder', [], [ZERO_ADDRESS], controllerContract)
 
-                    await checkEvents([{
+                    await checkEvents(tx1, [{
                         oldHolder: deployer.address,
                         newHolder : ZERO_ADDRESS
                     }], controllerContract)
@@ -4867,10 +4875,10 @@ describe('test BasePool', function () {
 
                     await controllerContract.connect(alice).createProposal(contract.address, Actions.Whitelist, 150)
 
-                    await controllerContract.connect(deployer).setVetoHolderApproval(0, true)
+                    const tx1 = await controllerContract.connect(deployer).setVetoHolderApproval(0, true)
                     await checkQuery('getProposal', [0], [contract.address, String(Actions.Whitelist), '0', deployer.address, false, '150'], controllerContract)
                     
-                    await checkEvents([
+                    await checkEvents(tx1, [
                         {
                             proposalIdx : 0,
                             approved: true
@@ -4886,19 +4894,19 @@ describe('test BasePool', function () {
 
                     await controllerContract.connect(alice).createProposal(contract.address, Actions.Whitelist, 150)
 
-                    await controllerContract.connect(deployer).setVetoHolderApproval(0, true)
+                    const tx1 = await controllerContract.connect(deployer).setVetoHolderApproval(0, true)
                     await checkQuery('getProposal', [0], [contract.address, String(Actions.Whitelist), '0', deployer.address, false, '150'], controllerContract)
 
-                    await checkEvents([
+                    await checkEvents(tx1, [
                         {
                             proposalIdx : 0,
                             approved: true
                         }
                     ], controllerContract)
 
-                    await controllerContract.connect(deployer).setVetoHolderApproval(0, false)
+                    const tx2 = await controllerContract.connect(deployer).setVetoHolderApproval(0, false)
 
-                    await checkEvents([
+                    await checkEvents(tx2, [
                         {
                             proposalIdx : 0,
                             approved: false
@@ -4979,11 +4987,11 @@ describe('test BasePool', function () {
                     // Not yet executed: the veto holder hasn't set its approval
                     await checkQuery('poolWhitelisted', [contract.address], [false], controllerContract)
 
-                    await controllerContract.connect(deployer).setVetoHolderApproval(0, true)
+                    const tx1 = await controllerContract.connect(deployer).setVetoHolderApproval(0, true)
 
                     await checkQuery('poolWhitelisted', [contract.address], [true], controllerContract)
 
-                    await checkEvents([
+                    await checkEvents(tx1, [
                         {
                             proposalIdx : 0,
                             approved: true
@@ -5008,9 +5016,9 @@ describe('test BasePool', function () {
 
                     await controllerContract.connect(alice).createProposal(contract.address, Actions.Whitelist, 150)
 
-                    await controllerContract.connect(deployer).setVetoHolderApproval(0, true)
+                    const tx1 = await controllerContract.connect(deployer).setVetoHolderApproval(0, true)
 
-                    await checkEvents([
+                    await checkEvents(tx1, [
                         {
                             proposalIdx : 0,
                             approved: true
@@ -5021,12 +5029,12 @@ describe('test BasePool', function () {
                     await checkQuery('poolWhitelisted', [contract.address], [false], controllerContract)
 
                     await controllerContract.connect(alice).vote(0)
-                    await controllerContract.connect(bob).vote(0)
+                    const tx2 = await controllerContract.connect(bob).vote(0)
 
 
                     await checkQuery('poolWhitelisted', [contract.address], [true], controllerContract)
 
-                    await checkEvents([
+                    await checkEvents(tx2, [
                         {
                             proposalIdx : 0,
                             voter : bob.address,
@@ -5061,11 +5069,11 @@ describe('test BasePool', function () {
                     // Not yet executed: the veto holder hasn't set its approval
                     await checkQuery('poolWhitelisted', [contract.address], [false], controllerContract)
 
-                    await controllerContract.connect(deployer).setVetoHolderApproval(0, true)
+                    const tx1 = await controllerContract.connect(deployer).setVetoHolderApproval(0, true)
 
                     await checkQuery('poolWhitelisted', [contract.address], [true], controllerContract)
 
-                    await checkEvents([
+                    await checkEvents(tx1, [
                         {
                             proposalIdx : 0,
                             approved: true
@@ -5082,11 +5090,11 @@ describe('test BasePool', function () {
                     await checkQuery('poolWhitelisted', [contract.address], [true], controllerContract)
 
                     await controllerContract.connect(alice).vote(1)
-                    await controllerContract.connect(bob).vote(1)
+                    const tx2 = await controllerContract.connect(bob).vote(1)
 
                     await checkQuery('poolWhitelisted', [contract.address], [false], controllerContract)
 
-                    await checkEvents([
+                    await checkEvents(tx2, [
                         {
                             proposalIdx : 1,
                             voter : bob.address,
@@ -5121,12 +5129,12 @@ describe('test BasePool', function () {
                     await checkQuery('poolWhitelisted', [contract.address], [false], controllerContract)
 
                     await controllerContract.connect(alice).vote(0)
-                    await controllerContract.connect(bob).vote(0)
+                    const tx1 = await controllerContract.connect(bob).vote(0)
 
                     // Approval is not required, so it is immediately executed
                     await checkQuery('poolWhitelisted', [contract.address], [true], controllerContract)
 
-                    await checkEvents([
+                    await checkEvents(tx1, [
                         {
                             proposalIdx : 0,
                             voter : bob.address,
@@ -5175,11 +5183,11 @@ describe('test BasePool', function () {
                     const rewardCoefficient = MONE.mul(135).div(100).toString() // 1.35
                     const reward = 2252248 // Precomputed
 
-                    await controllerContract.connect(charlie).requestTokenDistribution(dan.address, liquidity, duration, rewardCoefficient)
+                    const tx1 = await controllerContract.connect(charlie).requestTokenDistribution(dan.address, liquidity, duration, rewardCoefficient)
 
                     await checkQuery('rewardSupply', [], [String(10000000 - reward)], controllerContract)
                     
-                    await checkEvents([{
+                    await checkEvents(tx1, [{
                         account : dan.address,
                         liquidity,
                         duration,
@@ -5187,46 +5195,6 @@ describe('test BasePool', function () {
                         amount : reward
                     }], controllerContract)
                     await checkQuery('rewardBalance', [dan.address], [reward], controllerContract)
-                })
-
-                it('fails to request token distribution with the same idx twice', async function () {
-                    const [alice, bob, charlie, dan] = await newUsers([[VOTE_TOKEN, 20000000]], [[VOTE_TOKEN, 1000]], [], [])
-                    
-                    await controllerContract.connect(alice).depositRewardSupply('10000000')
-
-                    await controllerContract.connect(alice).depositVoteToken(String(100))
-                    await controllerContract.connect(bob).depositVoteToken(String(900))
-
-                    expect(await controllerContract.voteTokenTotalSupply()).to.be.deep.equal('1000')
-
-                    // Alice has 10% of the voting power
-
-                    await controllerContract.connect(alice).createProposal(charlie.address, Actions.Whitelist, 150)
-
-                    await checkQuery('poolWhitelisted', [charlie.address], [false], controllerContract)
-
-                    await controllerContract.connect(alice).vote(0)
-                    await controllerContract.connect(bob).vote(0)
-
-                    // Not yet executed: the veto holder hasn't set its approval
-                    await checkQuery('poolWhitelisted', [charlie.address], [false], controllerContract)
-
-                    await controllerContract.connect(deployer).setVetoHolderApproval(0, true)
-
-                    await checkQuery('poolWhitelisted', [charlie.address], [true], controllerContract)
-
-                    // Charlie is now a whitelisted pool. Request sending some tokens to Dan
-                    const liquidity = 452
-                    const duration = 3691
-                    const rewardCoefficient = MONE.mul(135).div(100).toString() // 1.35
-
-                    await controllerContract.connect(charlie).requestTokenDistribution(dan.address, liquidity, duration, rewardCoefficient)
-
-                    await expect(
-                        controllerContract.connect(charlie).requestTokenDistribution(
-                            dan.address, liquidity, duration, rewardCoefficient
-                        )
-                    ).to.be.eventually.rejectedWith('revert')
                 })
 
                 it('fails to request token distribution without being whitelisted', async function () {
