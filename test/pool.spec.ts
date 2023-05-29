@@ -76,7 +76,7 @@ const getPastEvents = (...args : any) => { }
 
 const approvalBits = (permissions : Array<string>) => {
     let bits = 0
-    const possiblePermissions = ['repay', 'addLiquidity', 'removeLiquidity', 'claim', 'forceRewardUpdate', 'resendRewardRequest']
+    const possiblePermissions = ['repay', 'addLiquidity', 'removeLiquidity', 'claim', 'forceRewardUpdate']
 
     for (const permission of permissions) {
         if (!possiblePermissions.includes(permission)) {
@@ -575,7 +575,7 @@ describe('test BasePool', function () {
             it('fails to add liquidity without being authorized', async function () {
                 const [alice, bob] = await newUsers([], [ [LOAN_CCY_TOKEN, 10000] ])
 
-                const bits = approvalBits(['repay', 'removeLiquidity', 'claim', 'forceRewardUpdate', 'resendRewardRequest'])
+                const bits = approvalBits(['repay', 'removeLiquidity', 'claim', 'forceRewardUpdate'])
                 console.log('Bits:', bits)
                 await contract.connect(alice).setApprovals(bob.address, bits)
 
@@ -835,7 +835,7 @@ describe('test BasePool', function () {
 
                 await contract.connect(alice).addLiquidity(alice.address, '8000' ,150,0)
 
-                const bits = approvalBits(['repay', 'addLiquidity', 'claim', 'forceRewardUpdate', 'resendRewardRequest'])
+                const bits = approvalBits(['repay', 'addLiquidity', 'claim', 'forceRewardUpdate'])
                 await contract.connect(alice).setApprovals(bob.address, bits)
 
                 await setTime(MIN_LPING_PERIOD + 1)
@@ -1199,7 +1199,7 @@ describe('test BasePool', function () {
                 const repaymentAmount = 582
 
                 
-                const bits = approvalBits(['addLiquidity', 'removeLiquidity', 'claim', 'forceRewardUpdate', 'resendRewardRequest'])
+                const bits = approvalBits(['addLiquidity', 'removeLiquidity', 'claim', 'forceRewardUpdate'])
                 console.log('Bits:', bits)
                 await contract.connect(bob).setApprovals(charlie.address, bits)
 
@@ -3024,7 +3024,7 @@ describe('test BasePool', function () {
                 const loanAmount = 428
                 const repaymentAmount = 582
 
-                const bits = approvalBits(['repay', 'addLiquidity', 'removeLiquidity', 'forceRewardUpdate', 'resendRewardRequest'])
+                const bits = approvalBits(['repay', 'addLiquidity', 'removeLiquidity', 'forceRewardUpdate'])
                 console.log('Bits:', bits)
                 await contract.connect(alice).setApprovals(charlie.address, bits)
 
@@ -5928,7 +5928,7 @@ describe('test BasePool', function () {
         it('fails to force a reward update for an unauthorized address', async function () {
             const [alice, bob] = await newUsers([[LOAN_CCY_TOKEN, 100000]], [])
 
-            const bits = approvalBits(['repay', 'addLiquidity', 'removeLiquidity', 'claim', 'resendRewardRequest'])
+            const bits = approvalBits(['repay', 'addLiquidity', 'removeLiquidity', 'claim'])
             console.log('Bits:', bits)
             await contract.connect(alice).setApprovals(bob.address, bits)
 

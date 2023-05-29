@@ -83,8 +83,7 @@ interface IBasePool {
         ADD_LIQUIDITY,
         REMOVE_LIQUIDITY,
         CLAIM,
-        FORCE_REWARD_UPDATE,
-        RESEND_REWARD_REQUEST
+        FORCE_REWARD_UPDATE
     }
 
     struct LpInfo {

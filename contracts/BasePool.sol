@@ -471,7 +471,6 @@ contract BasePool is IBasePool, Pausable, IPausable {
      * 2: REMOVE_LIQUIDITY
      * 3: CLAIM
      * 4: FORCE_REWARD_UPDATE
-     * 5: RESEND_REWARD_REQUEST
      * For example, 10100 would set the approvals for FORCE_REWARD_UPDATE and REMOVE_LIQUIDITY.
      * 
      * @param _approvee Address to set approvals for
@@ -483,8 +482,8 @@ contract BasePool is IBasePool, Pausable, IPausable {
     ) external override {
         if (msg.sender == _approvee || _approvee == address(0))
             revert("Invalid approval address.");
-        _packedApprovals &= 0x3f; // 0x3f is equivalent to 111111 in binary
-        for (uint256 index = 0; index < 6; ) {
+        _packedApprovals &= 0x1f; // 0x1f is equivalent to 11111 in binary
+        for (uint256 index = 0; index < 5; ) {
             bool approvalFlag = ((_packedApprovals >> index) & uint256(1)) == 1;
             if (
                 isApproved[msg.sender][_approvee][
@@ -494,14 +493,14 @@ contract BasePool is IBasePool, Pausable, IPausable {
                 isApproved[msg.sender][_approvee][
                     IBasePool.ApprovalTypes(index)
                 ] = approvalFlag;
-                _packedApprovals |= uint256(1) << 6;
+                _packedApprovals |= uint256(1) << 5;
             }
             unchecked {
                 index++;
             }
         }
-        if (((_packedApprovals >> 6) & uint256(1)) == 1) {
-            emit ApprovalUpdate(msg.sender, _approvee, _packedApprovals & 0x3f);
+        if (((_packedApprovals >> 5) & uint256(1)) == 1) {
+            emit ApprovalUpdate(msg.sender, _approvee, _packedApprovals & 0x1f);
         }
     }
 
