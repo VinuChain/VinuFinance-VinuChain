@@ -21,5 +21,12 @@ export default{
     allowUnlimitedContractSize: true,
     contractSizer: {
         runOnCompile: true
+    },
+    networks: {
+        hardhat: {
+            accounts: {
+                count: 2000
+            }
+        }
     }
 }

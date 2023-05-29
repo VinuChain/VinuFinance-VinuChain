@@ -1,11 +1,8 @@
-// NOTE: Queries are authomatically retried and don't fail (while calls do), so some query tests have been written as call tests.
-
 //import { describe } from "mocha";
 import { BigNumber } from "@ethersproject/bignumber";
 
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
-import config from "./vite.config.json";
 import { isNumberObject } from "util/types"
 
 
@@ -15,9 +12,6 @@ import { ethers } from "hardhat"
 chai.use(chaiAsPromised);
 const expect = chai.expect
 
-
-
-let provider: any;
 let deployer: any;
 
 let controllerContractBlueprint : hre.ethers.ContractFactory;
@@ -31,8 +25,8 @@ const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
 
 const MONE = BigNumber.from('1000000000000000000') //10**18
-let LOAN_CCY_TOKEN : string //'tti_5649544520544f4b454e6e40' // VITE
-let COLL_CCY_TOKEN : string //'tti_564954455820434f494e69b5' // VX
+let LOAN_CCY_TOKEN : string
+let COLL_CCY_TOKEN : string
 
 let loanCcyTokenContract : any
 let collCcyTokenContract : any
@@ -52,7 +46,7 @@ const CREATOR_FEE = 8
 
 let voteTokenContract : any
 
-let VOTE_TOKEN : string //'tti_564954455820434f494e69b5'
+let VOTE_TOKEN : string
 const SNAPSHOT_TOKEN_EVERY = 100 
 const PAUSE_THRESHOLD = 2000 // 20%
 const UNPAUSE_THRESHOLD = 3000 // 30%
@@ -61,18 +55,12 @@ const DEWHITELIST_THRESHOLD = 7000 // 70%
 const CONTROLLER_LOCK_PERIOD = 10
 const REWARD_COEFFICIENT = '0'
 
-const DISABLE_REVERTS = false
-const TX_ORIGIN_TO_MSG_SENDER = true
-const ALLOW_DISABLE = true
-
 const Actions = {
     Pause : 0,
     Unpause : 1,
     Whitelist : 2,
     Dewhitelist : 3
 }
-
-const getPastEvents = (...args : any) => { }
 
 const approvalBits = (permissions : Array<string>) => {
     let bits = 0
@@ -154,31 +142,6 @@ const checkQuery = async (methodName : string, params : Array<any>, expected : A
     expect(await referenceContract[methodName](...params)).to.be.deep.equal(parsedExpected)
 }
 
-function wait(milliseconds : number){
-    return new Promise(resolve => {
-        setTimeout(resolve, milliseconds)
-    })
-}
-
-// Contract-friendly receiveAll variant
-async function contractReceiveAll(referenceContract : ethers.Contract) {
-    let blocks : Array<any> = [true]
-
-    console.log('Waiting for unreceived blocks...')
-    while(blocks.length > 0) {
-        await wait(1000)
-        blocks = await provider.request(
-            "ledger_getUnreceivedBlocksByAddress",
-            referenceContract.address,
-            0,
-            100
-        )
-    }
-
-    console.log('Finished waiting. 16 second delay to deal with confirmation.')
-    await wait(16000)
-}
-
 const newUsers = async (...tokenInfos : Array<Array<Array<String | Number>>>) => {
     const users : Array<any> = []
     for (const tokenInfo of tokenInfos) {
@@ -211,55 +174,6 @@ const setTime = async (newTime : Number, referenceContract : ethers.Contract | u
     await referenceContract.connect(deployer).setTime(newTime)
 }
 
-const addTimestampSupport = (contractSrc) => {
-    contractSrc = contractSrc.replace('// TMP-TIMESTAMP-METHODS', `
-    uint32 time;
-    function setTime(uint32 _time) external { time = _time; }
-    function getTime() public view returns (uint32) { return time; } 
-    `)
-    contractSrc = contractSrc.replace(/block\.timestamp/g, 'getTime()')
-    return contractSrc
-}
-
-const disableReverts = (contractSrc) => {
-    contractSrc = contractSrc.replace(/revert\(.+\);/g, 'require(0 == 0);')
-    contractSrc = contractSrc.replace(/require\(.+\);/g, 'require(0 == 0);')
-    contractSrc = contractSrc.replace(/assert\(.+\);/g, 'require(0 == 0);')
-    return contractSrc
-}
-
-const allowDisable = (contractSrc : string) => {
-    contractSrc = contractSrc.replace('// TMP-MAYBE-DISABLE', 'if(disabled) return;')
-    contractSrc = contractSrc.replace('// TMP-MAYBE-DISABLE-METHODS', `
-    bool disabled;
-    function setDisabled(bool _disabled) external { disabled = _disabled; }
-    `)
-
-    return contractSrc
-}
-
-
-const callMethod = async (method, args, options) => {
-    if (!options) {
-        options = {}
-    }
-    if (!options.caller) {
-        options.caller = deployer
-    }
-
-    /// @ts-ignore
-    const result = await this[method](...args, options)
-
-    return result
-}
-
-const deployAndPrepare = async (blueprint, args) => {
-    const contract = await blueprint.deploy(...args)
-    
-    contract.call = callMethod
-
-    return contract
-}
 
 const whitelistContract = async () => {
     const [manager] = await newUsers([ [VOTE_TOKEN, 10000100] ])
@@ -5583,8 +5497,6 @@ describe('test BasePool', function () {
                     sharesRemoved3
                 )
 
-            console.log(await getPastEvents(contract, 'allEvents', {fromHeight: 0, toHeight: 0}))
-
             await checkQuery('lastRewardTimestamp', [alice.address], [time3])
             await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity3])
             
@@ -5859,8 +5771,6 @@ describe('test BasePool', function () {
 
             await contract.connect(alice).addLiquidity(alice.address, String(liquidity3 - liquidity2) ,10000,0)
 
-            
-            console.log(await getPastEvents(contract, 'allEvents', {fromHeight: 0, toHeight: 0}))
 
             await checkQuery('lastRewardTimestamp', [alice.address], [time3])
             await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity3])
@@ -5917,8 +5827,6 @@ describe('test BasePool', function () {
 
             
             console.log('Added liquidity 2')
-            
-            console.log(await getPastEvents(contract, 'allEvents', {fromHeight: 0, toHeight: 0}))
 
             await checkQuery('lastRewardTimestamp', [alice.address], [time3])
             await checkQuery('lastTrackedLiquidity', [alice.address], [liquidity3])
