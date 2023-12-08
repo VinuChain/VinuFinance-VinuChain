@@ -50,6 +50,7 @@ var voteTokenContract : any = null
 
 var controllerContract : any = null
 var contract : any = null
+var multiclaimContract : any = null
 
 function getTimestamp() {
     return Math.round(Date.now() / 1000);
@@ -215,6 +216,8 @@ async function deploy () {
             0, 0, REWARD_COEFFICIENT, 1
         ]
     )
+
+    multiclaimContract = (await hre.ethers.getContractFactory('Multiclaim')).deploy()
 }
 async function whitelistContract () {
     // Charlie will vote for the contract to be whitelisted
