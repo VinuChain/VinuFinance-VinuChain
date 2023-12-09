@@ -5265,8 +5265,8 @@ describe('test BasePool', function () {
     
                 const tx1 = await multiclaimContract.connect(alice).claimMultiple(
                         contract.address,
-                        [1, 2],
-                        [1, 1], // Reinvest
+                        [[1, 2]],
+                        [1], // Reinvest
                         150
                     )
     
@@ -5279,7 +5279,7 @@ describe('test BasePool', function () {
                 )
                 await checkQuery('getLpInfo', [alice.address],
                     [
-                        3, 2 + MIN_LPING_PERIOD, 1, [shares, shares + shares2 + shares3], [3]
+                        3, 2 + MIN_LPING_PERIOD, 1, [shares + shares2 + shares3], []
                     ]
                 )
                 expect(await loanCcyTokenContract.balanceOf(alice.address)).to.be.deep.equal(String(8000 - liquidity))

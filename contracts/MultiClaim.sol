@@ -11,7 +11,7 @@ contract MultiClaim {
 
     function claimMultiple(
         IBasePool pool,
-        uint256[] calldata _loanIdxs,
+        uint256[][] calldata _loanIdxs,
         bool[] calldata _isReinvested,
         uint256 _deadline
     ) external {
@@ -25,11 +25,9 @@ contract MultiClaim {
         uint256 collCcyBalanceBefore = collCcyToken.balanceOf(address(this));
         
         for (uint256 i = 0; i < _loanIdxs.length; i++) {
-            uint256[] memory indexArray = new uint256[](1);
-            indexArray[0] = _loanIdxs[i];
             pool.claim(
                 msg.sender,
-                indexArray,
+                _loanIdxs[i],
                 _isReinvested[i],
                 _deadline
             );
