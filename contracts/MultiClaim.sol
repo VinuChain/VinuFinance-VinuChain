@@ -11,7 +11,6 @@ contract MultiClaim {
 
     function claimMultiple(
         IBasePool pool,
-        address _onBehalfOf,
         uint256[] calldata _loanIdxs,
         bool[] calldata _isReinvested,
         uint256 _deadline
@@ -22,14 +21,14 @@ contract MultiClaim {
         );
         (IERC20 loanCcyToken, IERC20 collCcyToken, , , , , , , ) = pool.getPoolInfo();
 
-        uint256 loanCcyBalanceBefore = loanCcyToken.balanceOf(_onBehalfOf);
-        uint256 collCcyBalanceBefore = collCcyToken.balanceOf(_onBehalfOf);
+        uint256 loanCcyBalanceBefore = loanCcyToken.balanceOf(address(this));
+        uint256 collCcyBalanceBefore = collCcyToken.balanceOf(address(this));
         
         for (uint256 i = 0; i < _loanIdxs.length; i++) {
             uint256[] memory indexArray = new uint256[](1);
             indexArray[0] = _loanIdxs[i];
             pool.claim(
-                _onBehalfOf,
+                msg.sender,
                 indexArray,
                 _isReinvested[i],
                 _deadline
@@ -37,17 +36,17 @@ contract MultiClaim {
         }
 
         // Transfer the loan currency to the user
-        uint256 loanCcyBalanceAfter = loanCcyToken.balanceOf(_onBehalfOf);
+        uint256 loanCcyBalanceAfter = loanCcyToken.balanceOf(address(this));
         uint256 loanCcyBalanceDiff = loanCcyBalanceAfter - loanCcyBalanceBefore;
         if (loanCcyBalanceDiff > 0) {
-            loanCcyToken.safeTransfer(_onBehalfOf, loanCcyBalanceDiff);
+            loanCcyToken.safeTransfer(msg.sender, loanCcyBalanceDiff);
         }
 
         // Transfer the collateral currency to the user
-        uint256 collCcyBalanceAfter = collCcyToken.balanceOf(_onBehalfOf);
+        uint256 collCcyBalanceAfter = collCcyToken.balanceOf(address(this));
         uint256 collCcyBalanceDiff = collCcyBalanceAfter - collCcyBalanceBefore;
         if (collCcyBalanceDiff > 0) {
-            collCcyToken.safeTransfer(_onBehalfOf, collCcyBalanceDiff);
+            collCcyToken.safeTransfer(msg.sender, collCcyBalanceDiff);
         }
     }
 }

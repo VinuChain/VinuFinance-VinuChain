@@ -5265,7 +5265,6 @@ describe('test BasePool', function () {
     
                 const tx1 = await multiclaimContract.connect(alice).claimMultiple(
                         contract.address,
-                        alice.address,
                         [1, 2],
                         [1, 1], // Reinvest
                         150
