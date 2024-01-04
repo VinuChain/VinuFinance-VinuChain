@@ -18,14 +18,22 @@ contract EmergencyWithdrawal is ReentrancyGuard {
     /// @param user User that approved the escrow
     /// @param pool Pool that the user approved the escrow for
     /// @param escrow Escrow that the user approved
-    event Approved(address indexed user, address indexed pool, address indexed escrow);
+    event Approved(
+        address indexed user,
+        address indexed pool,
+        address indexed escrow
+    );
 
     /// @notice Emitted when a user unapproves an escrow to withdraw on its behalf
     ///
     /// @param user User that unapproved the escrow
     /// @param pool Pool that the user unapproved the escrow for
     /// @param escrow Escrow that the user unapproved
-    event Unapproved(address indexed user, address indexed pool, address indexed escrow);
+    event Unapproved(
+        address indexed user,
+        address indexed pool,
+        address indexed escrow
+    );
 
     /// @notice Emitted when an escrow withdraws on behalf of a user
     ///
@@ -34,10 +42,17 @@ contract EmergencyWithdrawal is ReentrancyGuard {
     /// @param escrow Escrow that withdrew
     /// @param token Token that was withdrawn
     /// @param amount Amount of tokens withdrawn
-    event Withdrawal(address indexed user, address indexed pool, address indexed escrow, IERC20 token, uint256 amount);
+    event Withdrawal(
+        address indexed user,
+        address indexed pool,
+        address indexed escrow,
+        IERC20 token,
+        uint256 amount
+    );
 
     // Mapping of user => pool => escrow => approved
-    mapping(address => mapping(address => mapping(address => bool))) public approved;
+    mapping(address => mapping(address => mapping(address => bool)))
+        public approved;
 
     /// @notice Approve an escrow to withdraw on behalf of the user
     ///
@@ -62,7 +77,11 @@ contract EmergencyWithdrawal is ReentrancyGuard {
     /// @param _user User to check
     /// @param _pool Pool to check
     /// @param _escrow Escrow to check
-    function isApproved(address _user, address _pool, address _escrow) public view returns (bool) {
+    function isApproved(
+        address _user,
+        address _pool,
+        address _escrow
+    ) public view returns (bool) {
         return approved[_user][_pool][_escrow];
     }
 
@@ -73,15 +92,23 @@ contract EmergencyWithdrawal is ReentrancyGuard {
     ///      through this contract (which is intended behavior)
     /// @param _pool Pool to withdraw from
     /// @param _onBehalfOf User to withdraw for
-    function collectEmergency(IBasePool _pool, address _onBehalfOf) external nonReentrant {
-        require(isApproved(_onBehalfOf, address(_pool), msg.sender), "Not approved");
+    function collectEmergency(
+        IBasePool _pool,
+        address _onBehalfOf
+    ) external nonReentrant {
+        require(
+            isApproved(_onBehalfOf, address(_pool), msg.sender),
+            "Not approved"
+        );
 
         (IERC20 token, , , , , , , , ) = _pool.getPoolInfo();
 
         // Store the amount of tokens before the withdraw
         uint256 amountBefore = token.balanceOf(address(this));
 
-        (, , , uint256[] memory sharesOverTime, ) = _pool.getLpInfo(_onBehalfOf);
+        (, , , uint256[] memory sharesOverTime, ) = _pool.getLpInfo(
+            _onBehalfOf
+        );
 
         // Get the last number of shares
         require(sharesOverTime.length > 0, "No shares");
