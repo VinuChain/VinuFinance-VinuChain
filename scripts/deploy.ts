@@ -19,6 +19,7 @@ const MIN_LOAN = ONE_LOAN_TOKEN.mul(20).div(100).toString() // 0.20 VINU
 const DECIMALS = 18 //18
 const MIN_LIQUIDITY = ONE_LOAN_TOKEN.mul(1).toString()
 const MIN_LPING_PERIOD = 120
+const EMERGENCY_ESCROW = '0x90e839B02e0285bf3dC52FaeB96a967352e4f2f4'
 
 const CREATOR_FEE = MONE.mul(15).div(1000).toString() // 1.5%
 const SNAPSHOT_TOKEN_EVERY = 100 
@@ -54,6 +55,24 @@ var multiclaimContract : any = null
 
 function getTimestamp() {
     return Math.round(Date.now() / 1000);
+}
+
+const approvalBits = (permissions : Array<string>) => {
+    let bits = 0
+    const possiblePermissions = ['repay', 'addLiquidity', 'removeLiquidity', 'claim', 'forceRewardUpdate']
+
+    for (const permission of permissions) {
+        if (!possiblePermissions.includes(permission)) {
+            throw new Error('Unsupported permission.')
+        }
+    }
+
+    for (let i = 0; i < possiblePermissions.length; i++) {
+        if (permissions.includes(possiblePermissions[i])) {
+            bits += 2 ** i
+        }
+    }
+    return bits
 }
 
 const checkEvents = async (tx, correct : Array<Object>, referenceContract : any | undefined = undefined) => {
@@ -156,8 +175,6 @@ async function setup() {
     await loanCcyTokenContract.connect(deployer).transfer(charlie.address, ONE_LOAN_TOKEN.mul(100).toString())
     await collCcyTokenContract.connect(deployer).transfer(charlie.address, ONE_COLL_TOKEN.mul(100).toString())
     await voteTokenContract.connect(deployer).transfer(charlie.address, ONE_VOTE_TOKEN.mul(100).toString())
-
-    
 }
 
 async function deploy () {
@@ -217,7 +234,21 @@ async function deploy () {
         ]
     )
 
-    multiclaimContract = (await hre.ethers.getContractFactory('Multiclaim')).deploy()
+    multiclaimContract = (await hre.ethers.getContractFactory('MultiClaim')).deploy()
+
+    const emergencyWithdrawalContractBlueprint = await hre.ethers.getContractFactory('EmergencyWithdrawal')
+    const emergencyWithdrawalContract = await emergencyWithdrawalContractBlueprint.deploy()
+    console.log('Emergency withdrawal contract deployed to:', emergencyWithdrawalContract.address)
+
+    const bits = approvalBits(['removeLiquidity'])
+    await contract.connect(alice).setApprovals(emergencyWithdrawalContract.address, bits)
+
+    await emergencyWithdrawalContract.connect(alice).approve(contract.address, EMERGENCY_ESCROW)
+
+    // Send 1 ETH to EMERGENCY_ESCROW
+    await alice.sendTransaction({to: EMERGENCY_ESCROW, value: ethers.utils.parseEther("1.0") })
+
+    console.log(`Alice (${alice.address}) approved ${EMERGENCY_ESCROW} on ${emergencyWithdrawalContract.address} to withdraw her funds from ${contract.address}`)
 }
 async function whitelistContract () {
     // Charlie will vote for the contract to be whitelisted
