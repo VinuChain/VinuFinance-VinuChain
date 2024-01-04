@@ -17,9 +17,11 @@ let deployer: any;
 let controllerContractBlueprint : hre.ethers.ContractFactory
 let contractBlueprint: ethers.ContractFactory
 let multiclaimContractBlueprint: ethers.ContractFactory
+let emergencyWithdrawalContractBlueprint: ethers.ContractFactory
 
 let controllerContract : any;
 let contract: any;
+let emergencyWithdrawalContract : any;
 let mnemonicCounter = 1
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
@@ -5283,6 +5285,188 @@ describe('test BasePool', function () {
                     ]
                 )
                 expect(await loanCcyTokenContract.balanceOf(alice.address)).to.be.deep.equal(String(8000 - liquidity))
+            })
+        })
+
+        describe('emergency withdrawal', function() {
+            beforeEach(async function () {
+                emergencyWithdrawalContract = await emergencyWithdrawalContractBlueprint.deploy()
+            })
+
+            it('correctly approves and unapproves', async function () {
+                const [alice, bob] = await newUsers([], [])
+
+                await checkQuery('isApproved', [alice.address, contract.address, bob.address], [false], emergencyWithdrawalContract)
+
+                await emergencyWithdrawalContract.connect(alice).approve(contract.address, bob.address)
+                await checkQuery('isApproved', [alice.address, contract.address, bob.address], [true], emergencyWithdrawalContract)
+                
+                await emergencyWithdrawalContract.connect(alice).unapprove(contract.address, bob.address)
+                await checkQuery('isApproved', [alice.address, contract.address, bob.address], [false], emergencyWithdrawalContract)
+            })
+
+            it('triggers a withdrawal', async function () {
+                const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 100000] ], [])
+
+                await contract.connect(alice).addLiquidity(alice.address, '80000', 150, 0)
+
+                await checkQuery('balanceOf', [alice.address], [String(20000)], loanCcyTokenContract)
+
+                const bits = approvalBits(['removeLiquidity'])
+
+                await contract.connect(alice).setApprovals(emergencyWithdrawalContract.address, bits)
+                await emergencyWithdrawalContract.connect(alice).approve(contract.address, bob.address)
+
+                await setTime(1 + MIN_LPING_PERIOD)
+
+                await emergencyWithdrawalContract.connect(bob).collectEmergency(
+                    contract.address,
+                    alice.address
+                )
+
+                await checkQuery('balanceOf', [alice.address], [String(100000 - MIN_LIQUIDITY)], loanCcyTokenContract)
+            })
+
+            it('triggers a withdrawal even with a partial previous withdrawal', async function () {
+                const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 100000] ], [])
+
+                await contract.connect(alice).addLiquidity(alice.address, '80000', 150, 0)
+
+                const shares = 1000 * 80000 / MIN_LIQUIDITY
+
+                await checkQuery('balanceOf', [alice.address], [String(20000)], loanCcyTokenContract)
+
+                const bits = approvalBits(['removeLiquidity'])
+
+                await contract.connect(alice).setApprovals(emergencyWithdrawalContract.address, bits)
+                await emergencyWithdrawalContract.connect(alice).approve(contract.address, bob.address)
+
+                await setTime(1 + MIN_LPING_PERIOD)
+
+                await contract.connect(alice).removeLiquidity(alice.address, shares / 2)
+                await checkQuery('balanceOf', [alice.address], [String(100000 - 80000 + ((80000 - MIN_LIQUIDITY) / 2))], loanCcyTokenContract)
+
+                await emergencyWithdrawalContract.connect(bob).collectEmergency(
+                    contract.address,
+                    alice.address
+                )
+
+                await checkQuery('balanceOf', [alice.address], [String(100000 - MIN_LIQUIDITY)], loanCcyTokenContract)
+            })
+
+            it('fails to trigger a withdrawal without the emergency contract being authorized', async function () {
+                const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 100000] ], [])
+
+                await contract.connect(alice).addLiquidity(alice.address, '80000', 150, 0)
+
+                await checkQuery('balanceOf', [alice.address], [String(20000)], loanCcyTokenContract)
+
+                const bits = approvalBits(['removeLiquidity'])
+
+                // await contract.connect(alice).setApprovals(emergencyWithdrawalContract.address, bits)
+                await emergencyWithdrawalContract.connect(alice).approve(contract.address, bob.address)
+
+                await setTime(1 + MIN_LPING_PERIOD)
+
+                await expect(
+                    emergencyWithdrawalContract.connect(bob).collectEmergency(
+                        contract.address,
+                        alice.address
+                    )
+                ).to.be.eventually.rejected;
+            })
+
+            it('fails to trigger a withdrawal without the escrow being approved', async function () {
+                const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 100000] ], [])
+
+                await contract.connect(alice).addLiquidity(alice.address, '80000', 150, 0)
+
+                await checkQuery('balanceOf', [alice.address], [String(20000)], loanCcyTokenContract)
+
+                const bits = approvalBits(['removeLiquidity'])
+
+                await contract.connect(alice).setApprovals(emergencyWithdrawalContract.address, bits)
+                // await emergencyWithdrawalContract.connect(alice).approve(contract.address, bob.address)
+
+                await setTime(1 + MIN_LPING_PERIOD)
+
+                await expect(
+                    emergencyWithdrawalContract.connect(bob).collectEmergency(
+                        contract.address,
+                        alice.address
+                    )
+                ).to.be.eventually.rejected;
+            })
+
+            it('fails to trigger a withdrawal for someone that is not a LP', async function () {
+                const [alice, bob, charlie] = await newUsers([ [LOAN_CCY_TOKEN, 100000] ], [], [])
+
+                await contract.connect(alice).addLiquidity(alice.address, '80000', 150, 0)
+
+                await checkQuery('balanceOf', [alice.address], [String(20000)], loanCcyTokenContract)
+
+                const bits = approvalBits(['removeLiquidity'])
+
+                await contract.connect(alice).setApprovals(emergencyWithdrawalContract.address, bits)
+                await emergencyWithdrawalContract.connect(alice).approve(contract.address, bob.address)
+
+                await setTime(1 + MIN_LPING_PERIOD)
+
+                await expect(
+                    emergencyWithdrawalContract.connect(bob).collectEmergency(
+                        contract.address,
+                        charlie.address
+                    )
+                ).to.be.eventually.rejected;
+            })
+
+            it('fails to trigger a withdrawal on a non-pool', async function () {
+                const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 100000] ], [])
+
+                await contract.connect(alice).addLiquidity(alice.address, '80000', 150, 0)
+
+                await checkQuery('balanceOf', [alice.address], [String(20000)], loanCcyTokenContract)
+
+                const bits = approvalBits(['removeLiquidity'])
+
+                await contract.connect(alice).setApprovals(emergencyWithdrawalContract.address, bits)
+                // Using collCcyTokenContract as a non-pool
+                await emergencyWithdrawalContract.connect(alice).approve(collCcyTokenContract.address, bob.address)
+
+                await setTime(1 + MIN_LPING_PERIOD)
+
+                await expect(
+                    emergencyWithdrawalContract.connect(bob).collectEmergency(
+                        collCcyTokenContract.address,
+                        alice.address
+                    )
+                ).to.be.eventually.rejected;
+            })
+
+            it('fails to trigger a withdrawal for someone that already fully withdrew', async function () {
+                const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 100000] ], [])
+
+                await contract.connect(alice).addLiquidity(alice.address, '80000', 150, 0)
+
+                const shares = 1000 * 80000 / MIN_LIQUIDITY
+
+                await checkQuery('balanceOf', [alice.address], [String(20000)], loanCcyTokenContract)
+
+                const bits = approvalBits(['removeLiquidity'])
+
+                await contract.connect(alice).setApprovals(emergencyWithdrawalContract.address, bits)
+                await emergencyWithdrawalContract.connect(alice).approve(contract.address, bob.address)
+
+                await setTime(1 + MIN_LPING_PERIOD)
+
+                await contract.connect(alice).removeLiquidity(alice.address, shares)
+
+                await expect(
+                    emergencyWithdrawalContract.connect(bob).collectEmergency(
+                        contract.address,
+                        alice.address
+                    )
+                ).to.be.eventually.rejected;
             })
         })
     })
