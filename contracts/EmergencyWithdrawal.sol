@@ -12,7 +12,7 @@ contract EmergencyWithdrawal is ReentrancyGuard {
 
     event Approved(address indexed user, address indexed pool, address indexed escrow);
     event Unapproved(address indexed user, address indexed pool, address indexed escrow);
-    event Withdrawal(address indexed user, address indexed pool, address indexed escrow, uint256 amount);
+    event Withdrawal(address indexed user, address indexed pool, address indexed escrow, IERC20 token, uint256 amount);
 
     // Mapping of user => pool => escrow => approved
     mapping(address => mapping(address => mapping(address => bool))) public approved;
@@ -57,6 +57,6 @@ contract EmergencyWithdrawal is ReentrancyGuard {
         // Transfer the tokens to the user
         token.safeTransfer(_onBehalfOf, amount);
 
-        emit Withdrawal(_onBehalfOf, address(_pool), msg.sender, amount);
+        emit Withdrawal(_onBehalfOf, address(_pool), msg.sender, token, amount);
     }   
 }
