@@ -160,7 +160,9 @@ const newUsers = async (...tokenInfos : Array<Array<Array<String | Number>>>) =>
             await matchingToken.connect(user).mint(String(tokenPair[1]))
 
             for (const currentContract of currentContracts) {
-                await matchingToken.connect(user).approve(currentContract.address, String(tokenPair[1]))
+                if (currentContract) {
+                    await matchingToken.connect(user).approve(currentContract.address, String(tokenPair[1]))
+                }
             }
         }
 
