@@ -581,7 +581,10 @@ contract Controller is IController {
 
         uint256 amount = uint256(_liquidity) * uint256(_duration) * uint256(_rewardCoefficient) / REWARD_BASE;
 
-        require(rewardSupply >= amount, "Not enough vote tokens.");
+        // If the funds left are less than what is requested, distribute the ones we have, but don't revert
+        if (amount > rewardSupply) {
+            amount = rewardSupply;
+        }
 
         unchecked {
             rewardSupply -= amount;

@@ -5107,7 +5107,7 @@ describe('test BasePool', function () {
                     ).to.be.revertedWith('Pool is not whitelisted.')
                 })
 
-                it('fails to request token distribution when there are not enough tokens', async function () {
+                it('receives a partial token distribution when there are not enough tokens', async function () {
                     const [alice, bob, charlie, dan] = await newUsers([[VOTE_TOKEN, 20000000]], [[VOTE_TOKEN, 1000]], [], [])
                     
                     // 1M instead of 10M
@@ -5139,11 +5139,11 @@ describe('test BasePool', function () {
                     const duration = 3691
                     const rewardCoefficient = MONE.mul(135).div(100).toString() // 1.35
 
-                    await expect(
-                        controllerContract.connect(charlie).requestTokenDistribution(
-                            dan.address, liquidity, duration, rewardCoefficient
-                        )
-                    ).to.be.revertedWith('Not enough vote tokens.')
+                    await controllerContract.connect(charlie).requestTokenDistribution(
+                        dan.address, liquidity, duration, rewardCoefficient
+                    )
+
+                    await checkQuery('rewardBalance', [dan.address], ['1000000'], controllerContract)
                 })
             })
         })
