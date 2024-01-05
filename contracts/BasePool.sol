@@ -1201,7 +1201,9 @@ contract BasePool is IBasePool, Pausable, IPausable {
      */
     function _sendReward(address _account, uint128 _liquidity, uint32 _timeSinceLastReward) internal {
         if (_liquidity > 0 && _timeSinceLastReward > 0) {
-            poolController.requestTokenDistribution(_account, _liquidity, _timeSinceLastReward, rewardCoefficient);
+            try poolController.requestTokenDistribution(_account, _liquidity, _timeSinceLastReward, rewardCoefficient) {} catch {
+                // Do nothing
+            }
         }
     }
 
@@ -1228,7 +1230,9 @@ contract BasePool is IBasePool, Pausable, IPausable {
 
     function _depositRevenue(IERC20 _token, uint256 _amount) internal {
         _token.safeIncreaseAllowance(address(poolController), _amount);
-        poolController.depositRevenue(_token, _amount);
+        try poolController.depositRevenue(_token, _amount) {} catch {
+            // Do nothing
+        }
     }
 
     /**
