@@ -121,6 +121,12 @@ contract Controller is IController {
         vetoHolder = _vetoHolder;
     }
 
+    function supportsInterface(bytes4 interfaceId) override external view returns (bool) {
+        return
+            interfaceId == type(IERC165).interfaceId ||
+            interfaceId == type(IController).interfaceId;
+    }
+
     /**
      * @inheritdoc IController
      */

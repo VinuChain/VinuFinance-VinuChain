@@ -3,8 +3,9 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IPausable.sol";
+import "@openzeppelin/contracts/interfaces/IERC165.sol";
 
-interface IController {
+interface IController is IERC165 {
     enum Action{
         PAUSE,
         UNPAUSE,
