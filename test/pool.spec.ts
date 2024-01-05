@@ -5375,7 +5375,7 @@ describe('test BasePool', function () {
                         contract.address,
                         alice.address
                     )
-                ).to.be.eventually.rejected;
+                ).to.be.eventually.rejectedWith('Sender not approved.');
             })
 
             it('fails to trigger a withdrawal without the escrow being approved', async function () {
@@ -5397,15 +5397,13 @@ describe('test BasePool', function () {
                         contract.address,
                         alice.address
                     )
-                ).to.be.eventually.rejected;
+                ).to.be.eventually.rejectedWith('Not approved');
             })
 
             it('fails to trigger a withdrawal for someone that is not a LP', async function () {
-                const [alice, bob, charlie] = await newUsers([ [LOAN_CCY_TOKEN, 100000] ], [], [])
+                const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 100000] ], [])
 
-                await contract.connect(alice).addLiquidity(alice.address, '80000', 150, 0)
-
-                await checkQuery('balanceOf', [alice.address], [String(20000)], loanCcyTokenContract)
+                //await contract.connect(alice).addLiquidity(alice.address, '80000', 150, 0)
 
                 const bits = approvalBits(['removeLiquidity'])
 
@@ -5417,9 +5415,9 @@ describe('test BasePool', function () {
                 await expect(
                     emergencyWithdrawalContract.connect(bob).collectEmergency(
                         contract.address,
-                        charlie.address
+                        alice.address
                     )
-                ).to.be.eventually.rejected;
+                ).to.be.eventually.rejectedWith('No shares');
             })
 
             it('fails to trigger a withdrawal on a non-pool', async function () {
@@ -5442,7 +5440,7 @@ describe('test BasePool', function () {
                         collCcyTokenContract.address,
                         alice.address
                     )
-                ).to.be.eventually.rejected;
+                ).to.be.eventually.rejectedWith('function selector was not recognized');
             })
 
             it('fails to trigger a withdrawal for someone that already fully withdrew', async function () {
@@ -5468,7 +5466,7 @@ describe('test BasePool', function () {
                         contract.address,
                         alice.address
                     )
-                ).to.be.eventually.rejected;
+                ).to.be.eventually.rejectedWith('No shares');
             })
         })
     })
