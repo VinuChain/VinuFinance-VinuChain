@@ -5150,7 +5150,7 @@ describe('test BasePool', function () {
             })
         })
 
-        describe.only('MultiClaim', function () {
+        describe('MultiClaim', function () {
             it('checks that MultiClaim is equivalent to multiple claims', async function () {
                 await setTime(0, contract)
                 const multiclaimContract = await multiclaimContractBlueprint.deploy()
@@ -5285,10 +5285,534 @@ describe('test BasePool', function () {
                 )
                 await checkQuery('getLpInfo', [alice.address],
                     [
-                        3, 2 + MIN_LPING_PERIOD, 1, [shares + shares2 + shares3], []
+                        3, 2 + MIN_LPING_PERIOD, 0, [shares + shares2 + shares3], []
                     ]
                 )
                 expect(await loanCcyTokenContract.balanceOf(alice.address)).to.be.deep.equal(String(8000 - liquidity))
+            })
+
+            it('checks that MultiClaim (used with singleton arrays) is equivalent to multiple claims', async function () {
+                await setTime(0, contract)
+                const multiclaimContract = await multiclaimContractBlueprint.deploy()
+                const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ], [[LOAN_CCY_TOKEN, 12000], [COLL_CCY_TOKEN, 8000]])
+
+                const bits = approvalBits(['addLiquidity', 'claim'])
+                console.log('Bits:', bits)
+                await contract.connect(alice).setApprovals(multiclaimContract.address, bits)
+    
+                const liquidity = 8000
+                const collateralPledge = 500
+                const shares = 1000 * liquidity / MIN_LIQUIDITY
+                // Precomputed
+                const loanAmount = 428
+                const repaymentAmount = 582
+    
+                const loanAmount2 = 418
+                const repaymentAmount2 = 596
+    
+                const shares2 = Math.floor(repaymentAmount / (liquidity - loanAmount - loanAmount2) * shares)
+    
+                // Note that although claiming the second loan is done after claimining the first loan, the liqudiity isn't
+                // already updated with repaymentAmount. That's because the contract first computes all the repayments and
+                // then deposits the new liquidity at the end
+                const shares3 = Math.floor(repaymentAmount2 / (liquidity - loanAmount - loanAmount2) * (shares))
+    
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
+    
+                await checkQuery('getPoolInfo', [],
+                    [
+                        LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
+                        liquidity, shares, REWARD_COEFFICIENT, 1
+                    ]
+                )
+                await checkQuery('getLpInfo', [alice.address],
+                    [
+                        1, MIN_LPING_PERIOD, 0, [shares], []
+                    ]
+                )
+                
+                // The contract doesn't allow atomic addLiquidity+borrow
+                await setTime(1)
+    
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
+                        10000, // maxRepayLimit
+                        150, // deadline
+                        0 // referralCode
+                    )
+    
+                await checkQuery('getPoolInfo', [],
+                    [
+                        LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
+                        liquidity - loanAmount, shares, REWARD_COEFFICIENT, 2
+                    ]
+                )
+                await checkQuery('getLpInfo', [alice.address],
+                    [
+                        1, MIN_LPING_PERIOD, 0, [shares], []
+                    ]
+                )
+    
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
+                        10000, // maxRepayLimit
+                        150, // deadline
+                        0 // referralCode
+                    )
+    
+                await checkQuery('getPoolInfo', [],
+                    [
+                        LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
+                        liquidity - loanAmount - loanAmount2, shares, REWARD_COEFFICIENT, 3
+                    ]
+                )
+                await checkQuery('getLpInfo', [alice.address],
+                    [
+                        1, MIN_LPING_PERIOD, 0, [shares], []
+                    ]
+                )
+    
+                // The contract doesn't allow atomic borrow + repay
+                await setTime(2)
+    
+                await contract.connect(bob).repay(
+                    1,
+                    bob.address
+                )
+    
+                await checkQuery('getPoolInfo', [],
+                    [
+                        LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
+                        liquidity - loanAmount - loanAmount2, shares, REWARD_COEFFICIENT, 3
+                    ]
+                )
+                await checkQuery('getLpInfo', [alice.address],
+                    [
+                        1, MIN_LPING_PERIOD, 0, [shares], []
+                    ]
+                )
+    
+                await contract.connect(bob).repay(
+                    2,
+                    bob.address
+                )
+    
+                await checkQuery('getPoolInfo', [],
+                    [
+                        LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
+                        liquidity - loanAmount - loanAmount2, shares, REWARD_COEFFICIENT, 3
+                    ]
+                )
+                await checkQuery('getLpInfo', [alice.address],
+                    [
+                        1, MIN_LPING_PERIOD, 0, [shares], []
+                    ]
+                )
+    
+                const tx1 = await multiclaimContract.connect(alice).claimMultiple(
+                        contract.address,
+                        [[1], [2]],
+                        [1, 1], // Reinvest
+                        150
+                    )
+    
+                // The liquidity and shares don't change because the user didn't reinvest
+                await checkQuery('getPoolInfo', [],
+                    [
+                        LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
+                        liquidity - loanAmount - loanAmount2 + repaymentAmount + repaymentAmount2, shares + shares2 + shares3, REWARD_COEFFICIENT, 3
+                    ]
+                )
+                await checkQuery('getLpInfo', [alice.address],
+                    [
+                        3, 2 + MIN_LPING_PERIOD, 1, [shares, shares + shares2 + shares3], [3]
+                    ]
+                )
+                expect(await loanCcyTokenContract.balanceOf(alice.address)).to.be.deep.equal(String(8000 - liquidity))
+            })
+
+            it('fails to claim a loan with mismatched sizes', async function () {
+                await setTime(0, contract)
+                const multiclaimContract = await multiclaimContractBlueprint.deploy()
+                const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ], [[LOAN_CCY_TOKEN, 12000], [COLL_CCY_TOKEN, 8000]])
+
+                const bits = approvalBits(['addLiquidity', 'claim'])
+                console.log('Bits:', bits)
+                await contract.connect(alice).setApprovals(multiclaimContract.address, bits)
+    
+                const liquidity = 8000
+                const collateralPledge = 500
+                const shares = 1000 * liquidity / MIN_LIQUIDITY
+                // Precomputed
+                const loanAmount = 428
+                const repaymentAmount = 582
+    
+                const loanAmount2 = 418
+                const repaymentAmount2 = 596
+    
+                const shares2 = Math.floor(repaymentAmount / (liquidity - loanAmount - loanAmount2) * shares)
+    
+                // Note that although claiming the second loan is done after claimining the first loan, the liqudiity isn't
+                // already updated with repaymentAmount. That's because the contract first computes all the repayments and
+                // then deposits the new liquidity at the end
+                const shares3 = Math.floor(repaymentAmount2 / (liquidity - loanAmount - loanAmount2) * (shares))
+    
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
+    
+                await checkQuery('getPoolInfo', [],
+                    [
+                        LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
+                        liquidity, shares, REWARD_COEFFICIENT, 1
+                    ]
+                )
+                await checkQuery('getLpInfo', [alice.address],
+                    [
+                        1, MIN_LPING_PERIOD, 0, [shares], []
+                    ]
+                )
+                
+                // The contract doesn't allow atomic addLiquidity+borrow
+                await setTime(1)
+    
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
+                        10000, // maxRepayLimit
+                        150, // deadline
+                        0 // referralCode
+                    )
+    
+                await checkQuery('getPoolInfo', [],
+                    [
+                        LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
+                        liquidity - loanAmount, shares, REWARD_COEFFICIENT, 2
+                    ]
+                )
+                await checkQuery('getLpInfo', [alice.address],
+                    [
+                        1, MIN_LPING_PERIOD, 0, [shares], []
+                    ]
+                )
+    
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
+                        10000, // maxRepayLimit
+                        150, // deadline
+                        0 // referralCode
+                    )
+    
+                await checkQuery('getPoolInfo', [],
+                    [
+                        LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
+                        liquidity - loanAmount - loanAmount2, shares, REWARD_COEFFICIENT, 3
+                    ]
+                )
+                await checkQuery('getLpInfo', [alice.address],
+                    [
+                        1, MIN_LPING_PERIOD, 0, [shares], []
+                    ]
+                )
+    
+                // The contract doesn't allow atomic borrow + repay
+                await setTime(2)
+    
+                await contract.connect(bob).repay(
+                    1,
+                    bob.address
+                )
+    
+                await checkQuery('getPoolInfo', [],
+                    [
+                        LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
+                        liquidity - loanAmount - loanAmount2, shares, REWARD_COEFFICIENT, 3
+                    ]
+                )
+                await checkQuery('getLpInfo', [alice.address],
+                    [
+                        1, MIN_LPING_PERIOD, 0, [shares], []
+                    ]
+                )
+    
+                await contract.connect(bob).repay(
+                    2,
+                    bob.address
+                )
+    
+                await checkQuery('getPoolInfo', [],
+                    [
+                        LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
+                        liquidity - loanAmount - loanAmount2, shares, REWARD_COEFFICIENT, 3
+                    ]
+                )
+                await checkQuery('getLpInfo', [alice.address],
+                    [
+                        1, MIN_LPING_PERIOD, 0, [shares], []
+                    ]
+                )
+
+                await expect(
+                    multiclaimContract.connect(alice).claimMultiple(
+                        contract.address,
+                        [[1, 2]],
+                        [1, 1], // Reinvest
+                        150
+                    )
+                ).to.be.revertedWith('MultiClaim: Inconsistent lengths.')
+            })
+
+            it('fails to claim a loan with mismatched sizes', async function () {
+                await setTime(0, contract)
+                const multiclaimContract = await multiclaimContractBlueprint.deploy()
+                const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ], [[LOAN_CCY_TOKEN, 12000], [COLL_CCY_TOKEN, 8000]])
+
+                const bits = approvalBits(['addLiquidity', 'claim'])
+                console.log('Bits:', bits)
+                await contract.connect(alice).setApprovals(multiclaimContract.address, bits)
+    
+                const liquidity = 8000
+                const collateralPledge = 500
+                const shares = 1000 * liquidity / MIN_LIQUIDITY
+                // Precomputed
+                const loanAmount = 428
+                const repaymentAmount = 582
+    
+                const loanAmount2 = 418
+                const repaymentAmount2 = 596
+    
+                const shares2 = Math.floor(repaymentAmount / (liquidity - loanAmount - loanAmount2) * shares)
+    
+                // Note that although claiming the second loan is done after claimining the first loan, the liqudiity isn't
+                // already updated with repaymentAmount. That's because the contract first computes all the repayments and
+                // then deposits the new liquidity at the end
+                const shares3 = Math.floor(repaymentAmount2 / (liquidity - loanAmount - loanAmount2) * (shares))
+    
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
+    
+                await checkQuery('getPoolInfo', [],
+                    [
+                        LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
+                        liquidity, shares, REWARD_COEFFICIENT, 1
+                    ]
+                )
+                await checkQuery('getLpInfo', [alice.address],
+                    [
+                        1, MIN_LPING_PERIOD, 0, [shares], []
+                    ]
+                )
+                
+                // The contract doesn't allow atomic addLiquidity+borrow
+                await setTime(1)
+    
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
+                        10000, // maxRepayLimit
+                        150, // deadline
+                        0 // referralCode
+                    )
+    
+                await checkQuery('getPoolInfo', [],
+                    [
+                        LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
+                        liquidity - loanAmount, shares, REWARD_COEFFICIENT, 2
+                    ]
+                )
+                await checkQuery('getLpInfo', [alice.address],
+                    [
+                        1, MIN_LPING_PERIOD, 0, [shares], []
+                    ]
+                )
+    
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
+                        10000, // maxRepayLimit
+                        150, // deadline
+                        0 // referralCode
+                    )
+    
+                await checkQuery('getPoolInfo', [],
+                    [
+                        LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
+                        liquidity - loanAmount - loanAmount2, shares, REWARD_COEFFICIENT, 3
+                    ]
+                )
+                await checkQuery('getLpInfo', [alice.address],
+                    [
+                        1, MIN_LPING_PERIOD, 0, [shares], []
+                    ]
+                )
+    
+                // The contract doesn't allow atomic borrow + repay
+                await setTime(2)
+    
+                await contract.connect(bob).repay(
+                    1,
+                    bob.address
+                )
+    
+                await checkQuery('getPoolInfo', [],
+                    [
+                        LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
+                        liquidity - loanAmount - loanAmount2, shares, REWARD_COEFFICIENT, 3
+                    ]
+                )
+                await checkQuery('getLpInfo', [alice.address],
+                    [
+                        1, MIN_LPING_PERIOD, 0, [shares], []
+                    ]
+                )
+    
+                await contract.connect(bob).repay(
+                    2,
+                    bob.address
+                )
+    
+                await checkQuery('getPoolInfo', [],
+                    [
+                        LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
+                        liquidity - loanAmount - loanAmount2, shares, REWARD_COEFFICIENT, 3
+                    ]
+                )
+                await checkQuery('getLpInfo', [alice.address],
+                    [
+                        1, MIN_LPING_PERIOD, 0, [shares], []
+                    ]
+                )
+
+                await expect(
+                    multiclaimContract.connect(alice).claimMultiple(
+                        contract.address,
+                        [],
+                        [], // Reinvest
+                        150
+                    )
+                ).to.be.revertedWith('MultiClaim: Empty loan index array.')
+            })
+
+            it('fails to claim a loan with an empty array', async function () {
+                await setTime(0, contract)
+                const multiclaimContract = await multiclaimContractBlueprint.deploy()
+                const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ], [[LOAN_CCY_TOKEN, 12000], [COLL_CCY_TOKEN, 8000]])
+
+                const bits = approvalBits(['addLiquidity', 'claim'])
+                console.log('Bits:', bits)
+                await contract.connect(alice).setApprovals(multiclaimContract.address, bits)
+    
+                const liquidity = 8000
+                const collateralPledge = 500
+                const shares = 1000 * liquidity / MIN_LIQUIDITY
+                // Precomputed
+                const loanAmount = 428
+                const repaymentAmount = 582
+    
+                const loanAmount2 = 418
+                const repaymentAmount2 = 596
+    
+                const shares2 = Math.floor(repaymentAmount / (liquidity - loanAmount - loanAmount2) * shares)
+    
+                // Note that although claiming the second loan is done after claimining the first loan, the liqudiity isn't
+                // already updated with repaymentAmount. That's because the contract first computes all the repayments and
+                // then deposits the new liquidity at the end
+                const shares3 = Math.floor(repaymentAmount2 / (liquidity - loanAmount - loanAmount2) * (shares))
+    
+                await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
+    
+                await checkQuery('getPoolInfo', [],
+                    [
+                        LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
+                        liquidity, shares, REWARD_COEFFICIENT, 1
+                    ]
+                )
+                await checkQuery('getLpInfo', [alice.address],
+                    [
+                        1, MIN_LPING_PERIOD, 0, [shares], []
+                    ]
+                )
+                
+                // The contract doesn't allow atomic addLiquidity+borrow
+                await setTime(1)
+    
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
+                        10000, // maxRepayLimit
+                        150, // deadline
+                        0 // referralCode
+                    )
+    
+                await checkQuery('getPoolInfo', [],
+                    [
+                        LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
+                        liquidity - loanAmount, shares, REWARD_COEFFICIENT, 2
+                    ]
+                )
+                await checkQuery('getLpInfo', [alice.address],
+                    [
+                        1, MIN_LPING_PERIOD, 0, [shares], []
+                    ]
+                )
+    
+                await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                        String(collateralPledge), 200, // minLoanLimit
+                        10000, // maxRepayLimit
+                        150, // deadline
+                        0 // referralCode
+                    )
+    
+                await checkQuery('getPoolInfo', [],
+                    [
+                        LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
+                        liquidity - loanAmount - loanAmount2, shares, REWARD_COEFFICIENT, 3
+                    ]
+                )
+                await checkQuery('getLpInfo', [alice.address],
+                    [
+                        1, MIN_LPING_PERIOD, 0, [shares], []
+                    ]
+                )
+    
+                // The contract doesn't allow atomic borrow + repay
+                await setTime(2)
+    
+                await contract.connect(bob).repay(
+                    1,
+                    bob.address
+                )
+    
+                await checkQuery('getPoolInfo', [],
+                    [
+                        LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
+                        liquidity - loanAmount - loanAmount2, shares, REWARD_COEFFICIENT, 3
+                    ]
+                )
+                await checkQuery('getLpInfo', [alice.address],
+                    [
+                        1, MIN_LPING_PERIOD, 0, [shares], []
+                    ]
+                )
+    
+                await contract.connect(bob).repay(
+                    2,
+                    bob.address
+                )
+    
+                await checkQuery('getPoolInfo', [],
+                    [
+                        LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
+                        liquidity - loanAmount - loanAmount2, shares, REWARD_COEFFICIENT, 3
+                    ]
+                )
+                await checkQuery('getLpInfo', [alice.address],
+                    [
+                        1, MIN_LPING_PERIOD, 0, [shares], []
+                    ]
+                )
+
+                await expect(
+                    multiclaimContract.connect(alice).claimMultiple(
+                        contract.address,
+                        [[1, 2], []],
+                        [1, 1], // Reinvest
+                        150
+                    )
+                ).to.be.revertedWith('MultiClaim: Empty loan index sub-array.')
             })
         })
 
@@ -5471,19 +5995,19 @@ describe('test BasePool', function () {
                 ).to.be.eventually.rejectedWith('No shares');
             })
         })
-    })
 
-    describe('ERC165', function () {
-        it('checks that Controller supports IERC165', async function () {
-            await expect(
-                controllerContract.supportsInterface('0x01ffc9a7')
-            ).to.be.eventually.equal(true)
-        })
-
-        it('checks that Controller supports IController', async function () {
-            await expect(
-                controllerContract.supportsInterface('0xef5f8ff3')
-            ).to.be.eventually.equal(true)
+        describe('ERC165', function () {
+            it('checks that Controller supports IERC165', async function () {
+                await expect(
+                    controllerContract.supportsInterface('0x01ffc9a7')
+                ).to.be.eventually.equal(true)
+            })
+    
+            it('checks that Controller supports IController', async function () {
+                await expect(
+                    controllerContract.supportsInterface('0xef5f8ff3')
+                ).to.be.eventually.equal(true)
+            })
         })
     })
 
@@ -5681,7 +6205,7 @@ describe('test BasePool', function () {
         })
     })
 
-    describe.only('Controller failure tolerance', function () {
+    describe('Controller failure tolerance', function () {
         it('checks that BasePool works even with a misconfigured Controller', async function () {
             const mockFakeControllerBlueprint = await hre.ethers.getContractFactory('MockFakeController')
             const mockFakeControllerContract = await mockFakeControllerBlueprint.deploy()
