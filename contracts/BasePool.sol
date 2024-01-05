@@ -23,7 +23,7 @@ contract BasePool is IBasePool, Pausable, IPausable {
     uint256 constant MAX_FEE = 300 * 10 ** 14; // 300bps
 
     // Minimum liquidity, denominated in loanCcy decimals
-    uint256 minLiquidity;
+    uint256 public override minLiquidity;
 
     // Address of the controller contract
     IController public poolController;
@@ -40,7 +40,7 @@ contract BasePool is IBasePool, Pausable, IPausable {
     uint256 loanTenor;
     
     // Decimals of the collateral token
-    uint256 collTokenDecimals;
+    uint256 public override collTokenDecimals;
 
     // Maximum loan per unit of collateral, denominated in loanCcy decimals
     uint256 maxLoanPerColl;

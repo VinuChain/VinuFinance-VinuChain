@@ -333,4 +333,7 @@ interface IBasePool {
         address _sender,
         ApprovalTypes _approvalType
     ) external view returns (bool _approved);
+
+    function minLiquidity() external view returns (uint256 _minLiquidity);
+    function collTokenDecimals() external view returns (uint256 _collTokenDecimals);
 }
