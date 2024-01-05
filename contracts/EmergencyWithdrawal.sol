@@ -52,7 +52,7 @@ contract EmergencyWithdrawal is ReentrancyGuard {
 
     // Mapping of user => pool => escrow => approved
     mapping(address => mapping(address => mapping(address => bool)))
-        public approved;
+        private approved;
 
     /// @notice Approve an escrow to withdraw on behalf of the user
     ///
