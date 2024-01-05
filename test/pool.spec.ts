@@ -223,6 +223,8 @@ describe('test BasePool', function () {
         contractBlueprint = await hre.ethers.getContractFactory('BasePool_parsed')
 
         multiclaimContractBlueprint = await hre.ethers.getContractFactory('MultiClaim')
+
+        emergencyWithdrawalContractBlueprint = await hre.ethers.getContractFactory('EmergencyWithdrawal')
     })
 
     describe('contract deployment', function () {
@@ -5662,6 +5664,159 @@ describe('test BasePool', function () {
 
             await checkQuery('numTokenSnapshots', [COLL_CCY_TOKEN], [1], controllerContract)
             await checkQuery('getTokenSnapshot', [COLL_CCY_TOKEN, 0], [0, creatorFee, 0, 1, 0], controllerContract)
+        })
+    })
+
+    describe.only('Controller failure tolerance', function () {
+        it('checks that BasePool works even with a misconfigured Controller', async function () {
+            const mockFakeControllerBlueprint = await hre.ethers.getContractFactory('MockFakeController')
+            const mockFakeControllerContract = await mockFakeControllerBlueprint.deploy()
+            contract = await contractBlueprint.deploy(
+                [LOAN_CCY_TOKEN, COLL_CCY_TOKEN],
+                DECIMALS,
+                LOAN_TENOR,
+                MAX_LOAN_PER_COLL,
+                [R1, R2],
+                [LIQUIDITY_BND_1, LIQUIDITY_BND_2],
+                MIN_LOAN,
+                '0',
+                MIN_LIQUIDITY,
+                mockFakeControllerContract.address, // This contract will revert on all actual calls
+                REWARD_COEFFICIENT
+            )
+
+            await setTime(0)
+
+            console.log('Completed deployment.')
+
+            // Do a classic addLiquidity + borrow + repay + claim
+
+            const [alice, bob] = await newUsers([ [LOAN_CCY_TOKEN, 8000] ], [[LOAN_CCY_TOKEN, 8000], [COLL_CCY_TOKEN, 8000]])
+
+            const liquidity = 8000
+            const collateralPledge = 500
+            const shares = 1000 * liquidity / MIN_LIQUIDITY
+            // Precomputed
+            const loanAmount = 428
+            const repaymentAmount = 582
+
+            const shares2 = Math.floor((repaymentAmount - loanAmount) / (liquidity - loanAmount) * shares)
+
+            await contract.connect(alice).addLiquidity(alice.address, String(liquidity) ,150,0)
+
+            await checkQuery('getPoolInfo', [],
+                [
+                    LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
+                    liquidity, shares, REWARD_COEFFICIENT, 1
+                ]
+            )
+            await checkQuery('getLpInfo', [alice.address],
+                [
+                    1, MIN_LPING_PERIOD, 0, [shares], []
+                ]
+            )
+            
+            // The contract doesn't allow atomic addLiquidity+borrow
+            await setTime(1)
+
+            await contract.connect(bob).borrow(bob.address, // onBehalfOf
+                    String(collateralPledge), 200, // minLoanLimit
+                    10000, // maxRepayLimit
+                    150, // deadline
+                    0 // referralCode
+                )
+
+            await checkQuery('getPoolInfo', [],
+                [
+                    LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
+                    liquidity - loanAmount, shares, REWARD_COEFFICIENT, 2
+                ]
+            )
+            await checkQuery('getLpInfo', [alice.address],
+                [
+                    1, MIN_LPING_PERIOD, 0, [shares], []
+                ]
+            )
+
+            // The contract doesn't allow atomic borrow + repay
+            await setTime(2)
+
+            await contract.connect(bob).repay(
+                1,
+                bob.address
+            )
+
+            await checkQuery('getPoolInfo', [],
+                [
+                    LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
+                    liquidity - loanAmount, shares, REWARD_COEFFICIENT, 2
+                ]
+            )
+            await checkQuery('getLpInfo', [alice.address],
+                [
+                    1, MIN_LPING_PERIOD, 0, [shares], []
+                ]
+            )
+
+            const tx1 = await contract.connect(alice).claim(
+                    alice.address,
+                    [1],
+                    0, // Don't reinvest
+                    150
+                )
+
+            // The liquidity and shares don't change because the user didn't reinvest
+            await checkQuery('getPoolInfo', [],
+                [
+                    LOAN_CCY_TOKEN, COLL_CCY_TOKEN, MAX_LOAN_PER_COLL, MIN_LOAN, LOAN_TENOR,
+                    liquidity - loanAmount, shares, REWARD_COEFFICIENT, 2
+                ]
+            )
+            await checkQuery('getLpInfo', [alice.address],
+                [
+                    2, MIN_LPING_PERIOD, 0, [shares], []
+                ]
+            )
+
+            await checkEvents(tx1, [{
+                lp : alice.address,
+                loanIdxs : [1],
+                repayments : repaymentAmount,
+                collateral : 0
+            }])
+            expect(await loanCcyTokenContract.balanceOf(alice.address)).to.be.deep.equal(String(8000 - liquidity + repaymentAmount))
+        })
+
+        it('fails to deploy a contract with an invalid address as Controller', async function () {
+            await expect(contractBlueprint.deploy(
+                [LOAN_CCY_TOKEN, COLL_CCY_TOKEN],
+                DECIMALS,
+                LOAN_TENOR,
+                MAX_LOAN_PER_COLL,
+                [R1, R2],
+                [LIQUIDITY_BND_1, LIQUIDITY_BND_2],
+                MIN_LOAN,
+                '0',
+                MIN_LIQUIDITY,
+                LOAN_CCY_TOKEN, // Using an unrelated address instead of Controller 
+                REWARD_COEFFICIENT
+            )).to.be.rejectedWith('Invalid Controller.')
+        })
+
+        it('fails to deploy a contract with a zero address as Controller', async function () {
+            await expect(contractBlueprint.deploy(
+                [LOAN_CCY_TOKEN, COLL_CCY_TOKEN],
+                DECIMALS,
+                LOAN_TENOR,
+                MAX_LOAN_PER_COLL,
+                [R1, R2],
+                [LIQUIDITY_BND_1, LIQUIDITY_BND_2],
+                MIN_LOAN,
+                '0',
+                MIN_LIQUIDITY,
+                ZERO_ADDRESS, 
+                REWARD_COEFFICIENT
+            )).to.be.rejectedWith('Invalid Controller.')
         })
     })
 
