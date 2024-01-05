@@ -122,10 +122,12 @@ contract BasePool is IBasePool, Pausable, IPausable {
         require(_rs.length == 2, "Rs length must be 2.");
         require(_liquidityBnds.length == 2, "Liquidity bounds length must be 2.");
 
+        require(_poolController.supportsInterface(type(IController).interfaceId), "Invalid Controller.");
+
         require(_tokens[0] != _tokens[1], "Loan and collateral must not be the same.");
         if (address(_tokens[0]) == address(0) || address(_tokens[1]) == address(0))
             revert("Loan and collateral tokens must not be 0.");
-        require(_loanTenor >= MIN_TENOR, "Load tenor must be at least MIN_TENOR.");
+        require(_loanTenor >= MIN_TENOR, "Loam tenor must be at least MIN_TENOR.");
         require(_maxLoanPerColl > 0, "Max loan must not be 0.");
         if (_rs[0] <= _rs[1] || _rs[1] == 0) revert("Invalid rate parameters.");
         if (_liquidityBnds[1] <= _liquidityBnds[0] || _liquidityBnds[0] == 0)
