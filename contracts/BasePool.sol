@@ -133,7 +133,7 @@ contract BasePool is IBasePool, Pausable, IPausable {
         if (_liquidityBnds[1] <= _liquidityBnds[0] || _liquidityBnds[0] == 0)
             revert("Invalid liquidity bounds");
         // ensure LP shares can be minted based on 1/1000th of minLp discretization
-        require(_minLiquidity >= 1000, "Min liqudity must be at least 1000.");
+        require(_minLiquidity >= 1000, "Min liquidity must be at least 1000.");
         require(_creatorFee <= MAX_FEE, "Creator fee too high.");
         loanCcyToken = _tokens[0];
         collCcyToken = _tokens[1];
