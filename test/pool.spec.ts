@@ -5473,6 +5473,20 @@ describe('test BasePool', function () {
         })
     })
 
+    describe('ERC165', function () {
+        it('checks that Controller supports IERC165', async function () {
+            await expect(
+                controllerContract.supportsInterface('0x01ffc9a7')
+            ).to.be.eventually.equal(true)
+        })
+
+        it('checks that Controller supports IController', async function () {
+            await expect(
+                controllerContract.supportsInterface('0xef5f8ff3')
+            ).to.be.eventually.equal(true)
+        })
+    })
+
     describe('loanTerms', function () {
         const setups = [
             {
