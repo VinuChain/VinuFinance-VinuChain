@@ -113,6 +113,7 @@ contract EmergencyWithdrawal is ReentrancyGuard {
         // Get the last number of shares
         require(sharesOverTime.length > 0, "No shares");
         uint128 shares = uint128(sharesOverTime[sharesOverTime.length - 1]);
+        require(shares > 0, "No shares");
 
         // Withdraw all shares
         _pool.removeLiquidity(_onBehalfOf, shares);
