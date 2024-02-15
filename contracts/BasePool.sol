@@ -613,7 +613,7 @@ contract BasePool is IBasePool, Pausable, IPausable {
      * @dev Refer to the whitepaper for an in-depth explanation
      * of the interest rate calculation
      *
-     * @param _inAmountAfterFees Amount of loanCcyToken to borrow, after transfer fees
+     * @param _inAmountAfterFees Amount of deposited collCcyToken, after transfer fees
      *
      * @return loanAmount Amount of loanCcyToken to borrow
      * @return repaymentAmount Amount of loanCcyToken to repay
