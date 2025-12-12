@@ -226,30 +226,35 @@ async function main() {
     const [deployer] = await ethers.getSigners();
     console.log("Deploying with:", deployer.address);
 
-    // Deploy Controller first
+    // Deploy Controller first (8 parameters)
     const Controller = await ethers.getContractFactory("Controller");
     const controller = await Controller.deploy(
-        voteTokenAddress,
-        vetoHolderAddress
+        voteTokenAddress,       // _voteToken
+        5000,                   // _pauseThreshold (50% of 10000)
+        5000,                   // _unpauseThreshold
+        5000,                   // _whitelistThreshold
+        5000,                   // _dewhitelistThreshold
+        86400,                  // _snapshotEvery (1 day)
+        604800,                 // _lockPeriod (7 days)
+        vetoHolderAddress       // _vetoHolder
     );
     await controller.deployed();
     console.log("Controller:", controller.address);
 
-    // Deploy BasePool
+    // Deploy BasePool (11 parameters with arrays)
     const BasePool = await ethers.getContractFactory("BasePool");
     const pool = await BasePool.deploy(
-        loanTokenAddress,
-        collTokenAddress,
-        loanTenor,
-        maxLoanPerColl,
-        r1,
-        r2,
-        liquidityBnd1,
-        liquidityBnd2,
-        minLoan,
-        creatorFee,
-        controller.address,
-        rewardCoefficient
+        [loanTokenAddress, collTokenAddress],  // _tokens array
+        18,                                     // _collTokenDecimals
+        loanTenor,                             // _loanTenor
+        maxLoanPerColl,                        // _maxLoanPerColl
+        [r1, r2],                              // _rs array
+        [liquidityBnd1, liquidityBnd2],        // _liquidityBnds array
+        minLoan,                               // _minLoan
+        creatorFee,                            // _creatorFee
+        minLiquidity,                          // _minLiquidity (new)
+        controller.address,                    // _poolController
+        rewardCoefficient                      // _rewardCoefficient
     );
     await pool.deployed();
     console.log("BasePool:", pool.address);

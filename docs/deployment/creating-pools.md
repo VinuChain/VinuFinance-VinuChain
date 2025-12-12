@@ -16,13 +16,14 @@ Each BasePool is a standalone lending market with specific:
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `loanCcyToken` | address | Token borrowed by users (e.g., USDT) |
-| `collCcyToken` | address | Token pledged as collateral (e.g., WVC) |
+| `_tokens` | IERC20[] | Array of [loanCcyToken, collCcyToken] |
+| `_collTokenDecimals` | uint256 | Decimals of the collateral token |
 
 **Considerations:**
+- Tokens passed as array: `[loanToken, collToken]`
 - Loan token should have stable value (stablecoins preferred)
 - Collateral token should have liquid markets for LPs to sell defaults
-- Verify token decimals match your calculations
+- Specify collateral token decimals explicitly
 
 ### Loan Parameters
 
@@ -122,9 +123,17 @@ const liquidityBnd2 = ethers.utils.parseUnits("100000", 6); // 100k USDT
 
 | Parameter | Type | Description | Max |
 |-----------|------|-------------|-----|
-| `creatorFee` | uint256 | Fee to pool creator | 3% (MAX_CREATOR_FEE) |
+| `creatorFee` | uint256 | Fee to pool creator | 3% (MAX_FEE) |
 
 The creator fee is taken from each loan as a percentage.
+
+### Liquidity Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `minLiquidity` | uint256 | Minimum liquidity (at least 1000) |
+
+The minimum liquidity ensures LP shares can be minted based on 1/1000th discretization.
 
 **Example:**
 ```javascript
@@ -157,23 +166,28 @@ const rewardCoefficient = BASE.mul(2);  // 2x rewards
 
 ```javascript
 const config = {
-    // Tokens
-    loanToken: "0x...",      // USDT
-    collToken: "0x...",      // WVC
+    // Tokens (passed as array)
+    tokens: ["0x...", "0x..."],  // [USDT, WVC]
+    collTokenDecimals: 18,       // WVC decimals
 
     // Loan terms
-    loanTenor: 2592000,      // 30 days
+    loanTenor: 2592000,          // 30 days
     maxLoanPerColl: ethers.utils.parseUnits("0.5", 18),  // 0.5 USDT per WVC
     minLoan: ethers.utils.parseUnits("100", 6),  // 100 USDT min
 
-    // Interest rates
-    r1: ethers.utils.parseUnits("0.02", 18),  // 2%
-    r2: ethers.utils.parseUnits("0.15", 18),  // 15%
-    liquidityBnd1: ethers.utils.parseUnits("10000", 6),   // 10k USDT
-    liquidityBnd2: ethers.utils.parseUnits("100000", 6),  // 100k USDT
+    // Interest rates (passed as array)
+    rs: [
+        ethers.utils.parseUnits("0.02", 18),  // r1 = 2%
+        ethers.utils.parseUnits("0.15", 18)   // r2 = 15%
+    ],
+    liquidityBnds: [
+        ethers.utils.parseUnits("10000", 6),   // 10k USDT bnd1
+        ethers.utils.parseUnits("100000", 6)   // 100k USDT bnd2
+    ],
 
-    // Fees
+    // Fees and liquidity
     creatorFee: ethers.utils.parseUnits("0.01", 18),  // 1%
+    minLiquidity: ethers.utils.parseUnits("1000", 6), // 1000 USDT min
 
     // Governance
     controller: "0x...",
@@ -188,18 +202,17 @@ async function deployPool(config) {
     const BasePool = await ethers.getContractFactory("BasePool");
 
     const pool = await BasePool.deploy(
-        config.loanToken,
-        config.collToken,
-        config.loanTenor,
-        config.maxLoanPerColl,
-        config.r1,
-        config.r2,
-        config.liquidityBnd1,
-        config.liquidityBnd2,
-        config.minLoan,
-        config.creatorFee,
-        config.controller,
-        config.rewardCoefficient
+        config.tokens,            // _tokens array
+        config.collTokenDecimals, // _collTokenDecimals
+        config.loanTenor,         // _loanTenor
+        config.maxLoanPerColl,    // _maxLoanPerColl
+        config.rs,                // _rs array
+        config.liquidityBnds,     // _liquidityBnds array
+        config.minLoan,           // _minLoan
+        config.creatorFee,        // _creatorFee
+        config.minLiquidity,      // _minLiquidity
+        config.controller,        // _poolController
+        config.rewardCoefficient  // _rewardCoefficient
     );
 
     await pool.deployed();

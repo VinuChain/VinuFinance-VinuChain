@@ -50,8 +50,8 @@ VinuFinance is designed with security as a primary concern:
 | Function | Protection |
 |----------|------------|
 | `requestTokenDistribution()` | Only whitelisted pools |
-| `setVetoHolderAddress()` | Only current veto holder |
-| `approveVetoHolder()` | Only veto holder |
+| `transferVetoPower()` | Only current veto holder |
+| `setVetoHolderApproval()` | Only veto holder |
 
 #### Governance Safeguards
 

@@ -74,32 +74,43 @@ async function main() {
     const WVC_ADDRESS = "0x...";
     const USDT_ADDRESS = "0x...";
 
-    // Deploy Controller
+    // Deploy Controller (8 parameters)
     console.log("\n1. Deploying Controller...");
     const Controller = await ethers.getContractFactory("Controller");
     const controller = await Controller.deploy(
-        VINU_ADDRESS,
-        deployer.address  // Temporary veto holder
+        VINU_ADDRESS,         // _voteToken
+        5000,                 // _pauseThreshold (50%)
+        5000,                 // _unpauseThreshold
+        5000,                 // _whitelistThreshold
+        5000,                 // _dewhitelistThreshold
+        86400,                // _snapshotEvery (1 day)
+        604800,               // _lockPeriod (7 days)
+        deployer.address      // _vetoHolder (temporary)
     );
     await controller.deployed();
     console.log("Controller:", controller.address);
 
-    // Deploy BasePool (USDT/WVC)
+    // Deploy BasePool (USDT/WVC) - 11 parameters with arrays
     console.log("\n2. Deploying BasePool (USDT/WVC)...");
     const BasePool = await ethers.getContractFactory("BasePool");
     const pool = await BasePool.deploy(
-        USDT_ADDRESS,                        // Loan token
-        WVC_ADDRESS,                         // Collateral token
-        2592000,                             // 30 days
-        ethers.utils.parseUnits("0.5", 18),  // maxLoanPerColl
-        ethers.utils.parseUnits("0.02", 18), // r1 = 2%
-        ethers.utils.parseUnits("0.15", 18), // r2 = 15%
-        ethers.utils.parseUnits("10000", 6), // 10k USDT bnd1
-        ethers.utils.parseUnits("100000", 6),// 100k USDT bnd2
-        ethers.utils.parseUnits("100", 6),   // 100 USDT minLoan
-        ethers.utils.parseUnits("0.01", 18), // 1% creator fee
-        controller.address,
-        ethers.utils.parseUnits("1", 18)     // reward coefficient
+        [USDT_ADDRESS, WVC_ADDRESS],         // _tokens array
+        18,                                   // _collTokenDecimals
+        2592000,                             // _loanTenor (30 days)
+        ethers.utils.parseUnits("0.5", 18),  // _maxLoanPerColl
+        [                                    // _rs array
+            ethers.utils.parseUnits("0.02", 18), // r1 = 2%
+            ethers.utils.parseUnits("0.15", 18)  // r2 = 15%
+        ],
+        [                                    // _liquidityBnds array
+            ethers.utils.parseUnits("10000", 6), // 10k USDT bnd1
+            ethers.utils.parseUnits("100000", 6) // 100k USDT bnd2
+        ],
+        ethers.utils.parseUnits("100", 6),   // _minLoan
+        ethers.utils.parseUnits("0.01", 18), // _creatorFee (1%)
+        ethers.utils.parseUnits("1000", 6),  // _minLiquidity
+        controller.address,                  // _poolController
+        ethers.utils.parseUnits("1", 18)     // _rewardCoefficient
     );
     await pool.deployed();
     console.log("BasePool (USDT/WVC):", pool.address);

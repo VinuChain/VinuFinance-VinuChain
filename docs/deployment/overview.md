@@ -58,8 +58,14 @@ Contracts must be deployed in a specific order due to dependencies:
 
 ```solidity
 constructor(
-    IERC20 _voteToken,          // Governance token address
-    address _vetoHolderAddress  // Address with veto power
+    IERC20 _voteToken,            // Governance token address
+    uint256 _pauseThreshold,      // Threshold for pause proposals (out of 10000)
+    uint256 _unpauseThreshold,    // Threshold for unpause proposals
+    uint256 _whitelistThreshold,  // Threshold for whitelist proposals
+    uint256 _dewhitelistThreshold,// Threshold for dewhitelist proposals
+    uint256 _snapshotEvery,       // Seconds between token snapshots
+    uint256 _lockPeriod,          // Seconds before user can withdraw
+    address _vetoHolder           // Address with veto power
 )
 ```
 
@@ -68,8 +74,14 @@ constructor(
 ```javascript
 const Controller = await ethers.getContractFactory("Controller");
 const controller = await Controller.deploy(
-    "0x...", // Vote token address
-    "0x..."  // Veto holder (DAO multisig recommended)
+    "0x...",    // Vote token address
+    5000,       // 50% pause threshold
+    5000,       // 50% unpause threshold
+    5000,       // 50% whitelist threshold
+    5000,       // 50% dewhitelist threshold
+    86400,      // Snapshot every 24 hours
+    604800,     // 7 day lock period
+    "0x..."     // Veto holder (DAO multisig recommended)
 );
 await controller.deployed();
 console.log("Controller deployed to:", controller.address);
@@ -88,18 +100,17 @@ console.log("Controller deployed to:", controller.address);
 
 ```solidity
 constructor(
-    IERC20 _loanCcyToken,       // Loan currency (e.g., USDT)
-    IERC20 _collCcyToken,       // Collateral currency (e.g., WVC)
-    uint256 _loanTenor,         // Loan duration in seconds
-    uint256 _maxLoanPerColl,    // Max loan per collateral unit
-    uint256 _r1,                // Interest rate r1 (in BASE)
-    uint256 _r2,                // Interest rate r2 (in BASE)
-    uint256 _liquidityBnd1,     // First liquidity boundary
-    uint256 _liquidityBnd2,     // Second liquidity boundary
-    uint256 _minLoan,           // Minimum loan amount
-    uint256 _creatorFee,        // Pool creator fee (max 3%)
-    IController _poolController, // Controller address
-    uint96 _rewardCoefficient   // LP reward coefficient
+    IERC20[] memory _tokens,        // [loanCcyToken, collCcyToken]
+    uint256 _collTokenDecimals,     // Decimals of collateral token
+    uint256 _loanTenor,             // Loan duration in seconds
+    uint256 _maxLoanPerColl,        // Max loan per collateral unit
+    uint256[] memory _rs,           // [r1, r2] interest rates (in BASE)
+    uint256[] memory _liquidityBnds,// [liquidityBnd1, liquidityBnd2]
+    uint256 _minLoan,               // Minimum loan amount
+    uint256 _creatorFee,            // Pool creator fee (max 3%)
+    uint256 _minLiquidity,          // Minimum liquidity (at least 1000)
+    IController _poolController,    // Controller address
+    uint96 _rewardCoefficient       // LP reward coefficient
 )
 ```
 
@@ -112,18 +123,23 @@ See [Creating Pools](creating-pools.md) for detailed parameter calculation.
 ```javascript
 const BasePool = await ethers.getContractFactory("BasePool");
 const pool = await BasePool.deploy(
-    "0x...",                    // USDT address
-    "0x...",                    // WVC address
-    2592000,                    // 30 days in seconds
+    ["0x...", "0x..."],             // [USDT address, WVC address]
+    18,                              // WVC has 18 decimals
+    2592000,                         // 30 days in seconds
     ethers.utils.parseUnits("0.5", 18), // 0.5 loan per coll
-    ethers.utils.parseUnits("0.02", 18), // 2% r1
-    ethers.utils.parseUnits("0.15", 18), // 15% r2
-    ethers.utils.parseUnits("10000", 6),  // 10k USDT bnd1
-    ethers.utils.parseUnits("100000", 6), // 100k USDT bnd2
+    [                                // Interest rates array
+        ethers.utils.parseUnits("0.02", 18), // 2% r1
+        ethers.utils.parseUnits("0.15", 18)  // 15% r2
+    ],
+    [                                // Liquidity bounds array
+        ethers.utils.parseUnits("10000", 6),  // 10k USDT bnd1
+        ethers.utils.parseUnits("100000", 6)  // 100k USDT bnd2
+    ],
     ethers.utils.parseUnits("100", 6),    // 100 USDT min loan
     ethers.utils.parseUnits("0.01", 18),  // 1% creator fee
+    ethers.utils.parseUnits("1000", 6),   // 1000 USDT min liquidity
     controllerAddress,
-    ethers.utils.parseUnits("1", 18)  // Reward coefficient
+    ethers.utils.parseUnits("1", 18)      // Reward coefficient
 );
 ```
 

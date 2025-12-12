@@ -65,7 +65,7 @@ const currentLoanIdx = poolInfo.loanIdx;
 
 // Check each loan's status
 for (let i = lpInfo.fromLoanIdx; i < currentLoanIdx; i++) {
-    const loan = await pool.loans(i);
+    const loan = await pool.loanIdxToLoanInfo(i);
     const now = Math.floor(Date.now() / 1000);
 
     if (loan.repaid || now > loan.expiry) {
@@ -89,7 +89,7 @@ function claim(
 
 **Example:**
 ```javascript
-const loansToClaimrom = [5, 6, 7, 8, 9, 10];
+const loansToClaim = [5, 6, 7, 8, 9, 10];
 const deadline = Math.floor(Date.now() / 1000) + 3600;
 
 await pool.claim(
@@ -274,7 +274,7 @@ const claimableLoans = [];
 const now = Math.floor(Date.now() / 1000);
 
 for (let i = fromLoanIdx; i < currentLoanIdx; i++) {
-    const loan = await pool.loans(i);
+    const loan = await pool.loanIdxToLoanInfo(i);
     if (loan.repaid || now > loan.expiry) {
         claimableLoans.push(i);
     }

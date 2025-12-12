@@ -126,8 +126,8 @@ To withdraw your deposited tokens:
 
 ```solidity
 function removeLiquidity(
-    address _onBehalfOf,      // Recipient of withdrawn tokens
-    uint128 numSharesRemove   // Number of LP shares to burn
+    address _onBehalfOf,  // Recipient of withdrawn tokens
+    uint128 numShares     // Number of LP shares to burn
 ) external;
 ```
 

@@ -89,10 +89,10 @@ Call the `borrow` function:
 
 ```solidity
 function borrow(
-    address _onBehalf,      // Loan recipient
+    address _onBehalfOf,    // Loan recipient
     uint128 _sendAmount,    // Collateral amount to pledge
-    uint128 _minLoan,       // Minimum acceptable loan
-    uint128 _maxRepay,      // Maximum acceptable repayment
+    uint128 _minLoanLimit,  // Minimum acceptable loan
+    uint128 _maxRepayLimit, // Maximum acceptable repayment
     uint256 _deadline,      // Transaction deadline
     uint256 _referralCode   // Optional referral code
 ) external payable;
@@ -100,8 +100,8 @@ function borrow(
 
 **Parameters explained:**
 
-- `_minLoan`: Protects against receiving less than expected (slippage protection)
-- `_maxRepay`: Protects against paying more interest than expected
+- `_minLoanLimit`: Protects against receiving less than expected (slippage protection)
+- `_maxRepayLimit`: Protects against paying more interest than expected
 
 **Example:**
 ```javascript
@@ -138,7 +138,7 @@ event Borrow(
 
 Query loan details:
 ```javascript
-const loanInfo = await pool.loans(loanIdx);
+const loanInfo = await pool.loanIdxToLoanInfo(loanIdx);
 // Returns: repayment, collateral, loanAmount, totalLpShares, expiry, repaid
 ```
 

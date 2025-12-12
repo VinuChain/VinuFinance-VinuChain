@@ -346,10 +346,10 @@ Calculates loan terms for a given collateral amount.
 ### loanIdxToLoanInfo
 
 ```solidity
-function loanIdxToLoanInfo(uint256 loanIdx) public view returns (LoanInfo memory)
+mapping(uint256 => LoanInfo) public loanIdxToLoanInfo;
 ```
 
-Returns loan information for a given index.
+Public mapping storing loan information by loan index. Solidity auto-generates a getter function for this mapping.
 
 ---
 

@@ -79,7 +79,7 @@ Your vote weight equals your deposited token balance at the time of voting.
 Change your mind? Cancel your vote:
 
 ```solidity
-controller.cancel(proposalIdx);
+controller.removeVote(proposalIdx);
 ```
 
 This withdraws your votes from the proposal.
@@ -132,8 +132,12 @@ Protocol fees are collected from pools and distributed to stakers:
 ### Claiming Revenue
 
 ```solidity
-// Claim revenue for a specific token
-controller.claimToken(tokenAddress);
+// Claim revenue for a specific token and snapshot
+controller.claimToken(
+    tokenAddress,        // Token to claim
+    tokenSnapshotIdx,    // Token snapshot index
+    accountSnapshotIdx   // Your account snapshot index
+);
 ```
 
 Your share is calculated as:
@@ -166,14 +170,17 @@ A special address (the "veto holder") has additional powers:
 For whitelist actions, the veto holder must call:
 
 ```solidity
-controller.approveVetoHolder(proposalIdx, true);  // Approve
-controller.approveVetoHolder(proposalIdx, false); // Reject
+controller.setVetoHolderApproval(proposalIdx, true);  // Approve
+controller.setVetoHolderApproval(proposalIdx, false); // Reject
 ```
 
 ### Transfer Veto Power
 
 ```solidity
-controller.setVetoHolderAddress(newVetoHolder);
+controller.transferVetoPower(
+    newVetoHolder,  // New veto holder address
+    false           // Set true only to transfer to zero address
+);
 ```
 
 ## Snapshots
@@ -219,8 +226,9 @@ await controller.vote(0);
 ### 4. Claim Revenue
 
 ```javascript
-// Claim accumulated USDT revenue
-await controller.claimToken(usdtAddress);
+// Claim accumulated USDT revenue from a specific snapshot
+// First get snapshot indices from contract state
+await controller.claimToken(usdtAddress, tokenSnapshotIdx, accountSnapshotIdx);
 ```
 
 ## LP Reward Distribution
