@@ -1,0 +1,380 @@
+# Local Development
+
+This guide explains how to set up a local development environment for VinuFinance.
+
+## Prerequisites
+
+- Node.js v16+ and npm
+- Git
+- A code editor (VS Code recommended)
+
+## Setup
+
+### 1. Clone Repository
+
+```bash
+git clone https://github.com/VinuFinance/VinuFinance-VinuChain.git
+cd VinuFinance-VinuChain
+```
+
+### 2. Install Dependencies
+
+```bash
+npm install
+```
+
+### 3. Environment Configuration
+
+Create a `.env` file in the project root:
+
+```bash
+# Network RPC URLs
+VINUCHAIN_RPC_URL=https://vinuchain-rpc.com
+TESTNET_RPC_URL=https://testnet-rpc.com
+
+# Private key for deployment (without 0x prefix)
+PRIVATE_KEY=your_private_key_here
+
+# Optional: Block explorer API key for verification
+EXPLORER_API_KEY=your_api_key
+```
+
+## Project Structure
+
+```
+VinuFinance-VinuChain/
+├── contracts/              # Solidity smart contracts
+│   ├── BasePool.sol       # Core lending pool
+│   ├── Controller.sol     # Governance contract
+│   ├── MultiClaim.sol     # Batch claim helper
+│   ├── EmergencyWithdrawal.sol
+│   └── interfaces/        # Contract interfaces
+├── scripts/               # Deployment scripts
+├── test/                  # Test files
+├── docs/                  # Documentation
+├── hardhat.config.js      # Hardhat configuration
+└── package.json
+```
+
+## Compilation
+
+Compile all contracts:
+
+```bash
+npx hardhat compile
+```
+
+Check for compilation errors:
+
+```bash
+npx hardhat compile --force
+```
+
+## Testing
+
+### Run All Tests
+
+```bash
+npx hardhat test
+```
+
+### Run Specific Test File
+
+```bash
+npx hardhat test test/BasePool.test.js
+```
+
+### Run with Gas Reporting
+
+```bash
+REPORT_GAS=true npx hardhat test
+```
+
+### Run with Coverage
+
+```bash
+npx hardhat coverage
+```
+
+## Local Blockchain
+
+### Start Local Node
+
+```bash
+npx hardhat node
+```
+
+This starts a local Ethereum node at `http://127.0.0.1:8545`.
+
+### Deploy to Local Node
+
+In a new terminal:
+
+```bash
+npx hardhat run scripts/deploy.js --network localhost
+```
+
+## Hardhat Console
+
+Interactive console for testing:
+
+```bash
+npx hardhat console --network localhost
+```
+
+Example session:
+
+```javascript
+// Get deployed contracts
+const BasePool = await ethers.getContractFactory("BasePool");
+const Controller = await ethers.getContractFactory("Controller");
+
+// Get signers
+const [deployer, user1, user2] = await ethers.getSigners();
+
+// Deploy test token
+const TestToken = await ethers.getContractFactory("ERC20Mock");
+const loanToken = await TestToken.deploy("USDT", "USDT", 6);
+const collToken = await TestToken.deploy("WVC", "WVC", 18);
+
+// Interact with contracts...
+```
+
+## Writing Tests
+
+### Basic Test Structure
+
+```javascript
+const { expect } = require("chai");
+const { ethers } = require("hardhat");
+
+describe("BasePool", function () {
+    let basePool;
+    let loanToken, collToken;
+    let owner, lp, borrower;
+
+    beforeEach(async function () {
+        [owner, lp, borrower] = await ethers.getSigners();
+
+        // Deploy mock tokens
+        const Token = await ethers.getContractFactory("ERC20Mock");
+        loanToken = await Token.deploy("USDT", "USDT", 6);
+        collToken = await Token.deploy("WVC", "WVC", 18);
+
+        // Deploy pool...
+    });
+
+    describe("addLiquidity", function () {
+        it("should mint LP shares", async function () {
+            // Test implementation
+        });
+
+        it("should revert with zero amount", async function () {
+            await expect(
+                basePool.addLiquidity(lp.address, 0, deadline, 0)
+            ).to.be.revertedWith("Invalid send amount.");
+        });
+    });
+});
+```
+
+### Testing Time-Dependent Functions
+
+```javascript
+const { time } = require("@nomicfoundation/hardhat-network-helpers");
+
+it("should allow removal after lock period", async function () {
+    // Add liquidity
+    await basePool.addLiquidity(lp.address, amount, deadline, 0);
+
+    // Fast forward 120 seconds (MIN_LPING_PERIOD)
+    await time.increase(120);
+
+    // Now removal should work
+    await basePool.removeLiquidity(lp.address, shares);
+});
+```
+
+### Testing Events
+
+```javascript
+it("should emit AddLiquidity event", async function () {
+    await expect(basePool.addLiquidity(lp.address, amount, deadline, 0))
+        .to.emit(basePool, "AddLiquidity")
+        .withArgs(
+            lp.address,
+            amount,
+            expectedShares,
+            expectedLiquidity,
+            expectedTotalShares,
+            expectedEarliestRemove,
+            expectedLoanIdx,
+            0
+        );
+});
+```
+
+## Deployment Scripts
+
+### Basic Deployment
+
+```javascript
+// scripts/deploy.js
+const { ethers } = require("hardhat");
+
+async function main() {
+    const [deployer] = await ethers.getSigners();
+    console.log("Deploying with:", deployer.address);
+
+    // Deploy Controller first
+    const Controller = await ethers.getContractFactory("Controller");
+    const controller = await Controller.deploy(
+        voteTokenAddress,
+        vetoHolderAddress
+    );
+    await controller.deployed();
+    console.log("Controller:", controller.address);
+
+    // Deploy BasePool
+    const BasePool = await ethers.getContractFactory("BasePool");
+    const pool = await BasePool.deploy(
+        loanTokenAddress,
+        collTokenAddress,
+        loanTenor,
+        maxLoanPerColl,
+        r1,
+        r2,
+        liquidityBnd1,
+        liquidityBnd2,
+        minLoan,
+        creatorFee,
+        controller.address,
+        rewardCoefficient
+    );
+    await pool.deployed();
+    console.log("BasePool:", pool.address);
+}
+
+main().catch(console.error);
+```
+
+### Running Deployment
+
+```bash
+# Local
+npx hardhat run scripts/deploy.js --network localhost
+
+# Testnet
+npx hardhat run scripts/deploy.js --network testnet
+
+# Mainnet
+npx hardhat run scripts/deploy.js --network vinuchain
+```
+
+## Contract Verification
+
+After deployment, verify on block explorer:
+
+```bash
+npx hardhat verify --network vinuchain CONTRACT_ADDRESS constructor_args...
+```
+
+## Debugging
+
+### Console Logs
+
+Add console logs in Solidity (removed in production):
+
+```solidity
+import "hardhat/console.sol";
+
+function borrow(...) external {
+    console.log("Borrowing amount:", _sendAmount);
+    console.log("Caller:", msg.sender);
+    // ...
+}
+```
+
+### Transaction Traces
+
+```bash
+npx hardhat test --trace
+```
+
+### Gas Profiling
+
+```javascript
+// In test file
+const tx = await basePool.borrow(...);
+const receipt = await tx.wait();
+console.log("Gas used:", receipt.gasUsed.toString());
+```
+
+## Common Development Tasks
+
+### Reset Local State
+
+```bash
+npx hardhat clean
+npx hardhat compile --force
+```
+
+### Update Dependencies
+
+```bash
+npm update
+```
+
+### Check Contract Sizes
+
+```bash
+npx hardhat size-contracts
+```
+
+## IDE Setup
+
+### VS Code Extensions
+
+- Solidity (Juan Blanco)
+- Hardhat for VS Code
+- ESLint
+- Prettier
+
+### Settings
+
+```json
+{
+    "solidity.compileUsingRemoteVersion": "v0.8.19",
+    "editor.formatOnSave": true
+}
+```
+
+## Troubleshooting
+
+### "Contract size exceeds limit"
+
+- Enable optimizer in hardhat.config.js
+- Split into smaller contracts
+- Remove unnecessary code
+
+### "Transaction reverted without reason"
+
+- Add custom error messages
+- Check all require conditions
+- Use try/catch in tests to get error details
+
+### "Nonce too high"
+
+Reset account in MetaMask or restart local node.
+
+### "Stack too deep"
+
+- Use struct for variables
+- Split function into smaller functions
+- Enable via-ir compiler option
+
+## Related
+
+- [Deployment Overview](../deployment/overview.md)
+- [Creating Pools](../deployment/creating-pools.md)
+- [Security Considerations](../resources/security.md)
