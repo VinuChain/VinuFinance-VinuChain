@@ -6,7 +6,7 @@ This guide covers VinuFinance deployment specifics for VinuChain.
 
 | Property | Value |
 |----------|-------|
-| Chain ID | 206 |
+| Chain ID | 207 |
 | Native Token | VC (VinuCoin) |
 | Wrapped Native | WVC (Wrapped VinuCoin) |
 | Block Time | ~3 seconds |
@@ -22,7 +22,7 @@ module.exports = {
     networks: {
         vinuchain: {
             url: process.env.VINUCHAIN_RPC_URL || "https://vinuchain-rpc.com",
-            chainId: 206,
+            chainId: 207,
             accounts: [process.env.PRIVATE_KEY],
             gasPrice: "auto"
         }
@@ -38,7 +38,7 @@ Add VinuChain to MetaMask:
 |---------|-------|
 | Network Name | VinuChain |
 | RPC URL | https://vinuchain-rpc.com |
-| Chain ID | 206 |
+| Chain ID | 207 |
 | Symbol | VC |
 | Explorer | https://explorer.vinuchain.com |
 
@@ -124,7 +124,7 @@ async function main() {
 
     // Summary
     console.log("\n========== DEPLOYMENT SUMMARY ==========");
-    console.log("Network: VinuChain (chainId: 206)");
+    console.log("Network: VinuChain (chainId: 207)");
     console.log("Controller:", controller.address);
     console.log("BasePool:", pool.address);
     console.log("MultiClaim:", multiClaim.address);
@@ -134,7 +134,7 @@ async function main() {
     const fs = require("fs");
     const addresses = {
         network: "vinuchain",
-        chainId: 206,
+        chainId: 207,
         deployer: deployer.address,
         timestamp: new Date().toISOString(),
         contracts: {

@@ -238,7 +238,7 @@ Maintain records for each deployment:
 ```json
 {
     "network": "vinuchain",
-    "chainId": 206,
+    "chainId": 207,
     "deployer": "0x...",
     "timestamp": "2024-01-01T00:00:00Z",
     "contracts": {

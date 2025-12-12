@@ -24,7 +24,7 @@ The contracts are based on Myso Finance v1 with additional features. See [Securi
 
 ### What blockchain is VinuFinance on?
 
-VinuFinance is deployed on **VinuChain** (Chain ID: 206).
+VinuFinance is deployed on **VinuChain** (Chain ID: 207).
 
 ## For Borrowers
 
