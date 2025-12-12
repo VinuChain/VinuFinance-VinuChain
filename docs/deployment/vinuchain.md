@@ -10,7 +10,7 @@ This guide covers VinuFinance deployment specifics for VinuChain.
 | Native Token | VC (VinuCoin) |
 | Wrapped Native | WVC (Wrapped VinuCoin) |
 | Block Time | ~3 seconds |
-| Consensus | Proof of Authority |
+| Consensus | Proof of Stake (PoS) |
 
 ## Network Configuration
 
