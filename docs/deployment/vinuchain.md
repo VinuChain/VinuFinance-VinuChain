@@ -21,7 +21,7 @@ This guide covers VinuFinance deployment specifics for VinuChain.
 module.exports = {
     networks: {
         vinuchain: {
-            url: process.env.VINUCHAIN_RPC_URL || "https://vinuchain-rpc.com",
+            url: process.env.VINUCHAIN_RPC_URL || "https://rpc.vinuchain.org",
             chainId: 207,
             accounts: [process.env.PRIVATE_KEY],
             gasPrice: "auto"
@@ -37,10 +37,10 @@ Add VinuChain to MetaMask:
 | Setting | Value |
 |---------|-------|
 | Network Name | VinuChain |
-| RPC URL | https://vinuchain-rpc.com |
+| RPC URL | https://rpc.vinuchain.org |
 | Chain ID | 207 |
 | Symbol | VC |
-| Explorer | https://explorer.vinuchain.com |
+| Explorer | https://vinuexplorer.org |
 
 ## Token Addresses
 
