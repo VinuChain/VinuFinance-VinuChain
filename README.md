@@ -1,6 +1,7 @@
 # VinuFinance-VinuChain
 
-VinuChain (i.e. EVM-compatible) port of [Vita-Inu/VinuFinance](https://github.com/Vita-Inu/VinuFinance).
+VinuChain port of [mysofinance/v1-core-protocol](https://github.com/mysofinance/v1-core-protocol), with extra features such as emergency stop support and LP rewards.
+
 
 # Installing
 
