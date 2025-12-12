@@ -48,11 +48,9 @@ Add VinuChain to MetaMask:
 
 | Token | Address | Decimals |
 |-------|---------|----------|
-| WVC (Wrapped VC) | `0x...` | 18 |
-| USDT | `0x...` | 6 |
-| VINU (Governance) | `0x...` | 18 |
-
-*Note: Replace with actual deployed addresses*
+| WVC (Wrapped VC) | `0xEd8c5530a0A086a12f57275728128a60DFf04230` | 18 |
+| USDT | `0xC0264277fcCa5FCfabd41a8bC01c1FcAF8383E41` | 6 |
+| VINU (Governance) | `0x00c1E515EA9579856304198EFb15f525A0bb50f6` | 18 |
 
 ## Deployment Script
 
@@ -69,10 +67,10 @@ async function main() {
         await deployer.getBalance()
     ), "VC");
 
-    // Token addresses (update these)
-    const VINU_ADDRESS = "0x...";
-    const WVC_ADDRESS = "0x...";
-    const USDT_ADDRESS = "0x...";
+    // Token addresses
+    const VINU_ADDRESS = "0x00c1E515EA9579856304198EFb15f525A0bb50f6";
+    const WVC_ADDRESS = "0xEd8c5530a0A086a12f57275728128a60DFf04230";
+    const USDT_ADDRESS = "0xC0264277fcCa5FCfabd41a8bC01c1FcAF8383E41";
 
     // Deploy Controller (8 parameters)
     console.log("\n1. Deploying Controller...");
