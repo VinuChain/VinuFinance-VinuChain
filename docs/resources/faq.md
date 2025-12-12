@@ -173,7 +173,7 @@ Your transaction deadline has expired. Submit a new transaction with a future de
 
 The pool's loan duration is below the minimum (86,400 seconds = 1 day).
 
-### "Too early to remove liquidity"
+### "Too early to remove"
 
 You must wait at least 120 seconds after depositing before removing liquidity.
 

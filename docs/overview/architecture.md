@@ -199,16 +199,19 @@ EmergencyWithdrawal
 // Prevents atomic add liquidity + borrow
 mapping(address => uint256) lastAddOfTxOrigin;
 
-if (lastAddOfTxOrigin[tx.origin] == _timestamp)
-    revert("Invalid operation.");
+// Check for atomic operations and zero address
+if (
+    lastAddOfTxOrigin[tx.origin] == _timestamp ||
+    _onBehalfOf == address(0)
+) revert("Invalid operation.");
 ```
 
 ### Pausability
 
 ```solidity
 // Only Controller can pause/unpause
-function pause() external {
-    require(msg.sender == address(poolController));
+function pause() external override {
+    require(msg.sender == address(poolController), "Not the controller.");
     _pause();
 }
 ```

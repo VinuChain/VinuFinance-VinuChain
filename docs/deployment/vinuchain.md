@@ -168,27 +168,51 @@ npx hardhat run scripts/deploy-vinuchain.js --network vinuchain
 
 ### Using Hardhat
 
+For contracts with array parameters, create a constructor arguments file:
+
+**1. Controller Verification**
+
 ```bash
-# Verify Controller
+# Controller has 8 parameters (no arrays)
 npx hardhat verify --network vinuchain \
     CONTROLLER_ADDRESS \
     "VINU_ADDRESS" \
+    5000 \
+    5000 \
+    5000 \
+    5000 \
+    86400 \
+    604800 \
     "VETO_HOLDER_ADDRESS"
+```
 
-# Verify BasePool
+**2. BasePool Verification**
+
+Since BasePool uses array parameters, create a file `arguments.js`:
+
+```javascript
+// arguments.js
+module.exports = [
+    ["USDT_ADDRESS", "WVC_ADDRESS"],           // _tokens array
+    18,                                         // _collTokenDecimals
+    2592000,                                   // _loanTenor
+    "500000000000000000",                      // _maxLoanPerColl
+    ["20000000000000000", "150000000000000000"], // _rs array [r1, r2]
+    ["10000000000", "100000000000"],           // _liquidityBnds array
+    "100000000",                               // _minLoan
+    "10000000000000000",                       // _creatorFee
+    "1000000000",                              // _minLiquidity
+    "CONTROLLER_ADDRESS",                      // _poolController
+    "1000000000000000000"                      // _rewardCoefficient
+];
+```
+
+Then verify:
+
+```bash
 npx hardhat verify --network vinuchain \
-    POOL_ADDRESS \
-    "USDT_ADDRESS" "WVC_ADDRESS" \
-    "2592000" \
-    "500000000000000000" \
-    "20000000000000000" \
-    "150000000000000000" \
-    "10000000000" \
-    "100000000000" \
-    "100000000" \
-    "10000000000000000" \
-    "CONTROLLER_ADDRESS" \
-    "1000000000000000000"
+    --constructor-args arguments.js \
+    POOL_ADDRESS
 ```
 
 ### Manual Verification

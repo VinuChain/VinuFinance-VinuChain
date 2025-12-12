@@ -48,7 +48,11 @@ LPs deposit loan currency into pools and earn yield through:
 When LPs deposit, they receive **LP shares** representing their portion of the pool:
 
 ```
+// Standard formula (when pool has existing shares)
 LP Shares = (Deposit Amount × Total LP Shares) / Total Liquidity
+
+// First LP deposit (when totalLpShares == 0)
+LP Shares = (Deposit Amount × 1000) / minLiquidity
 ```
 
 Shares entitle holders to:
